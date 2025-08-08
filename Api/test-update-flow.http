@@ -1,0 +1,45 @@
+### Test 1: Initial Login
+# @name login
+POST http://localhost:5227/api/auth/login
+Content-Type: application/json
+
+{
+    "username": "testuser",
+    "password": "Test123!"
+}
+
+### Test 2: Update User Data
+# @name update
+PUT http://localhost:5227/api/auth/update
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+{
+    "fullName": "Test User Updated",
+    "email": "testupdated@example.com",
+    "phone": "0123456789"
+}
+
+### Test 3: Verify Update Response
+# Check if the response includes:
+# 1. New token
+# 2. Updated user data
+# 3. Branch information
+
+### Test 4: Login Again
+# @name loginAgain
+POST http://localhost:5227/api/auth/login
+Content-Type: application/json
+
+{
+    "username": "testuser",
+    "password": "Test123!"
+}
+
+### Test 5: Verify Data Persistence
+# Compare the response from Test 4 with Test 2
+# Should show the updated:
+# 1. Full name
+# 2. Email
+# 3. Phone number
+# 4. Branch information should be preserved 

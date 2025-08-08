@@ -1,0 +1,30 @@
+### Test Admin Login - Fresh Database (Username Method)
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "123456"
+}
+
+### Test Admin Login - Fresh Database (Email Method)
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@airoboticsacademy.com",
+  "password": "123456"
+}
+
+### Test Alternative Admin Login (ibrahem)
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "ibrahem",
+  "password": "Ibrahem@123!"
+}
+
+### Test Get Students (Should be empty)
+GET http://localhost:5000/api/students
+Authorization: Bearer {{token}} 

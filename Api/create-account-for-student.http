@@ -1,0 +1,8 @@
+### Create account for existing student (Student ID 17 - ezz)
+POST {{host}}/api/students/17/create-account
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+### Variables
+@host = http://localhost:5227
+@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiIxIiwidW5pcXVlX25hbWUiOiJhZG1pbiIsImVtYWlsIjoiYWRtaW5AYWlyb2JvdGljcy5jb20iLCJyb2xlIjoiMSIsIkJyYW5jaElkIjoiMSIsIkZ1bGxOYW1lIjoiQWRtaW5pc3RyYXRvciIsIm5iZiI6MTc1MzA1MTgzNywiZXhwIjoxNzUzMTM4MjM3LCJpYXQiOjE3NTMwNTE4MzcsImlzcyI6IkFJUm9ib3RpY3NBY2FkZW15IiwiYXVkIjoiQUlSb2JvdGljc0FjYWRlbXlVc2VycyJ9.J-oNJ4RJdARvTzZeJ9C0BNGpFGvLKfZPJl8kaDLaAjQ 

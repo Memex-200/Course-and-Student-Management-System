@@ -1,0 +1,17 @@
+### إنشاء حسابات للطلاب الموجودين
+POST http://localhost:5227/api/students/create-accounts-for-existing
+Content-Type: application/json
+Authorization: Bearer YOUR_ADMIN_TOKEN_HERE
+
+###
+
+### تسجيل دخول كـ Admin أولاً للحصول على Token
+POST http://localhost:5227/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+### 

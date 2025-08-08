@@ -1,0 +1,28 @@
+### Login to get token
+POST http://localhost:5227/api/auth/login
+Content-Type: application/json
+
+{
+    "username": "testuser",
+    "password": "Test123!"
+}
+
+### Update user data
+PUT http://localhost:5227/api/auth/update
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "fullName": "Test User Updated",
+    "email": "testupdated@example.com",
+    "phone": "0123456789"
+}
+
+### Login again to verify persistence
+POST http://localhost:5227/api/auth/login
+Content-Type: application/json
+
+{
+    "username": "testuser",
+    "password": "Test123!"
+} 

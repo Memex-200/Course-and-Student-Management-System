@@ -1,0 +1,104 @@
+### Admin Login
+POST http://localhost:5227/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "123456"
+}
+
+### Get Categories (to see available category IDs)
+GET http://localhost:5227/api/courses/categories
+Authorization: Bearer {{adminToken}}
+
+### Add Course 1 - AI Course (Active)
+POST http://localhost:5227/api/courses
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "أساسيات الذكاء الاصطناعي",
+  "description": "تعلم أساسيات الذكاء الاصطناعي وتطبيقاته في الحياة العملية",
+  "courseCategoryId": 1,
+  "price": 1500.00,
+  "sessionsCount": 12,
+  "maxStudents": 25,
+  "startDate": "2024-10-01T14:00:00Z",
+  "endDate": "2024-12-01T16:00:00Z",
+  "status": 1,
+  "branchId": 1,
+  "schedule": "السبت والثلاثاء، 2-4 مساءً",
+  "content": "مقدمة في الذكاء الاصطناعي\nتعلم الآلة الأساسي\nتطبيقات عملية\nمشروع نهائي",
+  "prerequisites": "معرفة أساسية بالحاسوب\nأساسيات الرياضيات",
+  "courseDays": "السبت، الثلاثاء",
+  "startTime": "14:00",
+  "endTime": "16:00",
+  "notes": "كورس متاح للطلاب"
+}
+
+### Add Course 2 - Programming Course (Active)
+POST http://localhost:5227/api/courses
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "البرمجة للمبتدئين",
+  "description": "تعلم أساسيات البرمجة بلغة Python من الصفر",
+  "courseCategoryId": 1,
+  "price": 1200.00,
+  "sessionsCount": 16,
+  "maxStudents": 30,
+  "startDate": "2024-09-15T18:00:00Z",
+  "endDate": "2024-12-15T20:00:00Z",
+  "status": 1,
+  "branchId": 1,
+  "schedule": "الأحد والأربعاء، 6-8 مساءً",
+  "content": "أساسيات Python\nالمتغيرات والدوال\nالحلقات والشروط\nمشاريع تطبيقية",
+  "prerequisites": "لا توجد متطلبات سابقة",
+  "courseDays": "الأحد، الأربعاء",
+  "startTime": "18:00",
+  "endTime": "20:00",
+  "notes": "مناسب للمبتدئين تماماً"
+}
+
+### Add Course 3 - Web Development (Active)
+POST http://localhost:5227/api/courses
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "name": "تطوير المواقع الإلكترونية",
+  "description": "تعلم تطوير المواقع الحديثة باستخدام HTML, CSS, JavaScript",
+  "courseCategoryId": 1,
+  "price": 2000.00,
+  "sessionsCount": 20,
+  "maxStudents": 20,
+  "startDate": "2024-11-01T16:00:00Z",
+  "endDate": "2025-02-01T18:00:00Z",
+  "status": 1,
+  "branchId": 1,
+  "schedule": "الاثنين والخميس، 4-6 مساءً",
+  "content": "HTML5 المتقدم\nCSS3 والتصميم\nJavaScript التفاعلي\nمشروع موقع كامل",
+  "prerequisites": "معرفة أساسية بالحاسوب\nرغبة في التعلم",
+  "courseDays": "الاثنين، الخميس",
+  "startTime": "16:00",
+  "endTime": "18:00",
+  "notes": "كورس تطوير الويب الشامل"
+}
+
+### Student Login
+POST http://localhost:5227/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "student@test.com",
+  "password": "St123456"
+}
+
+### Get Available Courses for Student (Should show all active courses)
+GET http://localhost:5227/api/courses/available
+Authorization: Bearer {{studentToken}}
+
+### Get Student Dashboard (to see enrolled courses)
+GET http://localhost:5227/api/students/my-dashboard
+Authorization: Bearer {{studentToken}} 

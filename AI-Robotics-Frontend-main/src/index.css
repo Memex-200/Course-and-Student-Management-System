@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* إعدادات Toast Notifications */
+[data-sonner-toast][data-type="success"] {
+  background-color: #10B981 !important;
+  color: #FFFFFF !important;
+  border: none !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  background-color: #EF4444 !important;
+  color: #FFFFFF !important;
+  border: none !important;
+}
+
+[data-sonner-toast] {
+  direction: rtl !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+}
+
+/* إعدادات React Hot Toast */
+.react-hot-toast div[role="status"] {
+  background-color: #10B981 !important;
+  color: #FFFFFF !important;
+}
+
+.react-hot-toast div[role="alert"] {
+  background-color: #EF4444 !important;
+  color: #FFFFFF !important;
+}
+
+/* كلاس مخصص للتأكد من اللون الأخضر */
+.toast-success-green {
+  background-color: #10B981 !important;
+  color: #FFFFFF !important;
+  border: none !important;
+}
+
+.toast-success-green > div {
+  background-color: #10B981 !important;
+  color: #FFFFFF !important;
+}
+
+/* Particle animation */
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: rgba(59, 130, 246, 0.4);
+  border-radius: 50%;
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-20px) translateX(10px);
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 1;
+  }
+}

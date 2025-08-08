@@ -1,0 +1,57 @@
+### Test Admin Login - Ibrahem
+POST http://localhost:5227/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "ibrahem",
+  "password": "Ibrahem@123!"
+}
+
+### Test Admin Login - Karem
+POST http://localhost:5227/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "karem",
+  "password": "Karem@123!"
+}
+
+### Test Admin Login - Ahmed
+POST http://localhost:5227/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "ahmed",
+  "password": "Ahmed@123!"
+}
+
+### Test Admin Login - Mira
+POST http://localhost:5227/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "mira",
+  "password": "Mira@123!"
+}
+
+### Test Admin Login - Memex (Eman)
+POST http://localhost:5227/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "memex",
+  "password": "Eman@123!"
+}
+
+### Get All Users (Admin only)
+GET http://localhost:5227/api/auth/users
+Authorization: Bearer YOUR_TOKEN_HERE
+
+### Test Invalid Login
+POST http://localhost:5227/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "invalid",
+  "password": "invalid"
+}

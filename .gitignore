@@ -1,0 +1,66 @@
+# Dependencies
+**/node_modules/
+**/package-lock.json
+
+# Build outputs
+**/bin/
+**/obj/
+**/dist/
+**/build/
+
+# Environment variables
+**/.env
+**/.env.local
+**/.env.production
+
+# Logs
+**/*.log
+**/logs/
+
+# IDE/Editor files
+**/.vscode/
+**/.vs/
+**/*.suo
+**/*.user
+**/*.userosscache
+**/*.sln.docstates
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# .NET specific
+**/[Bb]in/
+**/[Oo]bj/
+**/[Ll]og/
+**/[Ll]ogs/
+**/*.pdb
+**/*.dll
+**/*.exe
+**/runtimes/
+
+# React/Node specific
+**/node_modules/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+
+# Video files
+**/*.mp4
+**/*.avi
+**/*.mov
+**/*.wmv
+
+# Large PDF files (keeping small ones)
+**/*.pdf
+
+# Image files (if too large)
+**/*.jpg
+**/*.jpeg
+**/*.png
+**/*.gif
