@@ -126,8 +126,8 @@ namespace Api
                         logger?.LogInformation($"Role value: {roleClaim.Value}, isAuthorized: {isAuthorized}");
                         return isAuthorized;
                     }));
-                options.AddPolicy("AdminOnly", policy =>
-                    policy.RequireRole("1"));
+                options.AddPolicy("AdminOnly", policy => 
+                    policy.RequireRole("Admin"));
             });
 
             // Email Settings Configuration
@@ -198,8 +198,8 @@ namespace Api
             {
                 if (context.Request.Method == "OPTIONS")
                 {
-                    context.Response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-                    context.Response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization");
+                    context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+                    context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization");
                     context.Response.StatusCode = 200;
                     return;
                 }
@@ -209,18 +209,20 @@ namespace Api
 
             app.MapControllers();
 
-            // Seed the database
+            // Apply migrations and seed the database
             using (var scope = app.Services.CreateScope())
             {
                 var services = scope.ServiceProvider;
                 try
                 {
+                    var dbContext = services.GetRequiredService<ApplicationDbContext>();
+                    await dbContext.Database.MigrateAsync();
                     await SeedData.Initialize(services);
                 }
                 catch (Exception ex)
                 {
                     var logger = services.GetRequiredService<ILogger<Program>>();
-                    logger.LogError(ex, "An error occurred seeding the DB.");
+                    logger.LogError(ex, "An error occurred applying migrations or seeding the DB.");
                 }
             }
 

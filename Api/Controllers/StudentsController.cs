@@ -59,8 +59,7 @@ namespace Api.Controllers
                         s.FullName.ToLower().Contains(search) || 
                         s.Phone.Contains(search) || 
                         s.ParentPhone.Contains(search) ||
-                        s.Email.ToLower().Contains(search) ||
-                        s.ParentEmail.ToLower().Contains(search)
+                        s.Email.ToLower().Contains(search)
                     );
                 }
 
@@ -73,17 +72,15 @@ namespace Api.Controllers
                         s.Phone,
                         s.Email,
                         s.Age,
+                        s.AgeGroup,
+                        s.Level,
                         s.Gender,
                         s.School,
-                        s.Grade,
-                        s.Address,
                         s.ParentName,
                         s.ParentPhone,
-                        s.ParentEmail,
                         s.EmergencyContact,
                         s.EmergencyPhone,
                         s.MedicalConditions,
-                        s.PreferredTransportation,
                         s.BranchId,
                         s.IsActive,
                         branch = new { id = s.Branch.Id, name = s.Branch.Name },
@@ -94,18 +91,44 @@ namespace Api.Controllers
                     })
                     .ToListAsync();
 
+                // Transform the data after database query
+                var transformedStudents = students.Select(s => new
+                {
+                    s.Id,
+                    s.FullName,
+                    s.Phone,
+                    s.Email,
+                    s.Age,
+                    AgeGroup = GetAgeGroupArabic(s.AgeGroup),
+                    Level = GetLevelArabic(s.Level),
+                    s.Gender,
+                    s.School,
+                    s.ParentName,
+                    s.ParentPhone,
+                    s.EmergencyContact,
+                    s.EmergencyPhone,
+                    s.MedicalConditions,
+                    s.BranchId,
+                    s.IsActive,
+                    s.branch,
+                    s.registeredCourses,
+                    s.totalRegistrations,
+                    s.cancelledRegistrations,
+                    s.CreatedAt
+                }).ToList();
+
                 // Log registration counts for debugging
-                foreach (var student in students)
+                foreach (var student in transformedStudents)
                 {
                     _logger.LogInformation($"Student {student.Id} ({student.FullName}): Total registrations: {student.totalRegistrations}, Cancelled: {student.cancelledRegistrations}, Active: {student.registeredCourses}");
                 }
 
-                _logger.LogInformation($"Found {students.Count} students");
+                _logger.LogInformation($"Found {transformedStudents.Count} students");
                 
                 return Ok(new { 
                     success = true,
-                    message = students.Count > 0 ? "تم جلب بيانات الطلاب بنجاح" : "لا يوجد طلاب",
-                    data = students
+                    message = transformedStudents.Count > 0 ? "تم جلب بيانات الطلاب بنجاح" : "لا يوجد طلاب",
+                    data = transformedStudents
                 });
             }
             catch (Exception ex)
@@ -120,95 +143,22 @@ namespace Api.Controllers
             }
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetStudent(int id)
-        {
-            try
-            {
-                var student = await _context.Students
-                    .Include(s => s.Branch)
-                    .Include(s => s.CourseRegistrations)
-                        .ThenInclude(cr => cr.Course)
-                    .Include(s => s.Attendances)
-                        .ThenInclude(a => a.Course)
-                    .FirstOrDefaultAsync(s => s.Id == id);
-
-                if (student == null)
-                    return NotFound(new { message = "الطالب غير موجود" });
-
-                var activeRegistrations = student.CourseRegistrations
-                    .Where(cr => cr.PaymentStatus != PaymentStatus.Cancelled)
-                    .ToList();
-
-                _logger.LogInformation($"Student {student.Id} ({student.FullName}): Total registrations: {student.CourseRegistrations.Count}, Active: {activeRegistrations.Count}");
-
-                var result = new
-                {
-                    student.Id,
-                    student.FullName,
-                    student.Phone,
-                    student.Email,
-                    student.Age,
-                    student.Gender,
-                    student.Address,
-                    student.ParentName,
-                    student.ParentPhone,
-                    student.ParentEmail,
-                    student.EmergencyContact,
-                    student.EmergencyPhone,
-                    student.MedicalConditions,
-                    student.PreferredTransportation,
-                    student.IsActive,
-                    Branch = new { student.Branch.Id, student.Branch.Name },
-                    registeredCourses = activeRegistrations.Count,
-                    CourseRegistrations = activeRegistrations
-                        .Select(cr => new
-                        {
-                            cr.Id,
-                            Course = cr.Course.Name,
-                            cr.RegistrationDate,
-                            PaymentStatus = cr.PaymentStatus.ToString(),
-                            PaymentStatusArabic = GetPaymentStatusArabic(cr.PaymentStatus),
-                            cr.TotalAmount,
-                            cr.PaidAmount,
-                            RemainingAmount = cr.RemainingAmount
-                        }).ToList(),
-                    AttendanceStats = new
-                    {
-                        TotalSessions = student.Attendances.Count(),
-                        PresentSessions = student.Attendances.Count(a => a.Status == AttendanceStatus.Present),
-                        AbsentSessions = student.Attendances.Count(a => a.Status == AttendanceStatus.Absent),
-                        LateSessions = student.Attendances.Count(a => a.Status == AttendanceStatus.Late)
-                    }
-                };
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "حدث خطأ في الخادم", error = ex.Message });
-            }
-        }
-
         [HttpPost]
         [Authorize(Policy = "AdminOrEmployee")]
         public async Task<IActionResult> CreateStudent([FromBody] CreateStudentRequest request)
         {
+            if (request == null)
+            {
+                _logger.LogError("CreateStudent: Request is null");
+                return BadRequest(new { message = "بيانات الطلب فارغة" });
+            }
+
             try
             {
-                _logger.LogInformation($"=== CreateStudent called ===");
-                _logger.LogInformation($"Email: {request.Email}");
-                _logger.LogInformation($"Phone: {request.Phone}");
-                _logger.LogInformation($"Name: {request.FullName}");
-                
                 var userBranchId = int.Parse(User.FindFirst("BranchId")?.Value ?? "0");
-                _logger.LogInformation($"User branch ID: {userBranchId}");
 
                 // Check if phone already exists
-                _logger.LogInformation($"=== Checking phone existence ===");
                 var phoneExists = await _context.Students.AnyAsync(s => s.Phone == request.Phone);
-                _logger.LogInformation($"Phone {request.Phone} exists: {phoneExists}");
-                
                 if (phoneExists)
                 {
                     _logger.LogWarning($"Phone number {request.Phone} already exists - returning BadRequest");
@@ -216,33 +166,14 @@ namespace Api.Controllers
                 }
 
                 // Check if email already exists
-                _logger.LogInformation($"=== Checking email existence ===");
                 if (!string.IsNullOrEmpty(request.Email))
                 {
                     var emailExists = await _context.Students.AnyAsync(s => s.Email == request.Email);
-                    _logger.LogInformation($"Email {request.Email} exists: {emailExists}");
-                    
                     if (emailExists)
                     {
                         _logger.LogWarning($"Email {request.Email} already exists - returning BadRequest");
                         return BadRequest(new { message = "الإيميل موجود بالفعل" });
                     }
-                }
-                else
-                {
-                    _logger.LogInformation($"Email is null or empty - skipping email check");
-                }
-
-                // Generate username and password
-                var username = _passwordGenerator.GenerateUsername(request.FullName);
-                var password = _passwordGenerator.GenerateRandomPassword();
-                var hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
-
-                // Ensure username is unique
-                var existingUserCount = await _context.Users.CountAsync(u => u.Username.StartsWith(username));
-                if (existingUserCount > 0)
-                {
-                    username = username + (existingUserCount + 1);
                 }
 
                 var student = new Student
@@ -251,15 +182,15 @@ namespace Api.Controllers
                     Phone = request.Phone,
                     Email = request.Email,
                     Age = request.Age,
+                    AgeGroup = DetermineAgeGroup(request.Age),
+                    Level = request.Level,
                     Gender = request.Gender,
-                    Address = request.Address,
+                    School = request.School,
                     ParentName = request.ParentName,
                     ParentPhone = request.ParentPhone,
-                    ParentEmail = request.ParentEmail,
                     EmergencyContact = request.EmergencyContact,
                     EmergencyPhone = request.EmergencyPhone,
                     MedicalConditions = request.MedicalConditions,
-                    PreferredTransportation = request.PreferredTransportation,
                     BranchId = userBranchId,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
@@ -268,56 +199,14 @@ namespace Api.Controllers
                 _context.Students.Add(student);
                 await _context.SaveChangesAsync();
 
-                // Create user account for the student
-                var user = new User
-                {
-                    Username = username,
-                    PasswordHash = hashedPassword,
-                    FullName = request.FullName,
-                    Email = request.Email,
-                    Phone = request.Phone,
-                    Role = UserRole.Student, // Student role
-                    BranchId = userBranchId,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    StudentId = student.Id
-                };
-
-                _context.Users.Add(user);
-                await _context.SaveChangesAsync();
-
-                // Send welcome email with login credentials
-                if (!string.IsNullOrEmpty(request.Email))
-                {
-                    try
-                    {
-                        var emailSent = await _emailService.SendWelcomeEmailAsync(
-                            request.Email, 
-                            request.FullName, 
-                            username, 
-                            password
-                        );
-                        
-                        if (emailSent)
-                        {
-                            _logger.LogInformation($"Welcome email sent successfully to {request.Email}");
-                        }
-                        else
-                        {
-                            _logger.LogWarning($"Failed to send welcome email to {request.Email}");
-                        }
-                    }
-                    catch (Exception emailEx)
-                    {
-                        _logger.LogError(emailEx, $"Error sending welcome email to {request.Email}");
-                    }
-                }
+                // Use the centralized method to create the user account
+                var (user, _) = await CreateUserAccountForStudentAsync(student);
 
                 _logger.LogInformation($"Student created successfully with ID: {student.Id}");
                 return Ok(new { 
                     message = "تم إضافة الطالب بنجاح وإرسال بيانات الدخول عبر الإيميل", 
                     studentId = student.Id,
-                    username = username,
+                    username = user?.Username,
                     emailSent = !string.IsNullOrEmpty(request.Email)
                 });
             }
@@ -345,70 +234,19 @@ namespace Api.Controllers
                 if (student.User != null)
                     return BadRequest(new { message = "الطالب لديه حساب مسبقاً" });
 
-                var userBranchId = int.Parse(User.FindFirst("BranchId")?.Value ?? "0");
+                // Use the centralized method to create the user account
+                var (user, _) = await CreateUserAccountForStudentAsync(student);
 
-                // Generate username and password
-                var username = _passwordGenerator.GenerateUsername(student.FullName);
-                var password = _passwordGenerator.GenerateRandomPassword();
-                var hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
-
-                // Ensure username is unique
-                var existingUserCount = await _context.Users.CountAsync(u => u.Username.StartsWith(username));
-                if (existingUserCount > 0)
+                if (user == null)
                 {
-                    username = username + (existingUserCount + 1);
-                }
-
-                // Create user account for the existing student
-                var user = new User
-                {
-                    Username = username,
-                    PasswordHash = hashedPassword,
-                    FullName = student.FullName,
-                    Email = student.Email,
-                    Phone = student.Phone,
-                    Role = UserRole.Student,
-                    BranchId = userBranchId,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow,
-                    StudentId = student.Id
-                };
-
-                _context.Users.Add(user);
-                await _context.SaveChangesAsync();
-
-                // Send welcome email with login credentials
-                if (!string.IsNullOrEmpty(student.Email))
-                {
-                    try
-                    {
-                        var emailSent = await _emailService.SendWelcomeEmailAsync(
-                            student.Email, 
-                            student.FullName, 
-                            username, 
-                            password
-                        );
-                        
-                        if (emailSent)
-                        {
-                            _logger.LogInformation($"Welcome email sent successfully to {student.Email}");
-                        }
-                        else
-                        {
-                            _logger.LogWarning($"Failed to send welcome email to {student.Email}");
-                        }
-                    }
-                    catch (Exception emailEx)
-                    {
-                        _logger.LogError(emailEx, $"Error sending welcome email to {student.Email}");
-                    }
+                    return StatusCode(500, new { message = "فشل إنشاء حساب المستخدم" });
                 }
 
                 _logger.LogInformation($"User account created successfully for student ID: {student.Id}");
                 return Ok(new { 
                     message = "تم إنشاء حساب للطالب بنجاح وإرسال بيانات الدخول عبر الإيميل", 
                     studentId = student.Id,
-                    username = username,
+                    username = user.Username,
                     emailSent = !string.IsNullOrEmpty(student.Email)
                 });
             }
@@ -439,15 +277,15 @@ namespace Api.Controllers
                 student.Phone = request.Phone;
                 student.Email = request.Email;
                 student.Age = request.Age;
+                student.AgeGroup = DetermineAgeGroup(request.Age);
+                student.Level = request.Level;
                 student.Gender = request.Gender;
-                student.Address = request.Address;
+                student.School = request.School;
                 student.ParentName = request.ParentName;
                 student.ParentPhone = request.ParentPhone;
-                student.ParentEmail = request.ParentEmail;
                 student.EmergencyContact = request.EmergencyContact;
                 student.EmergencyPhone = request.EmergencyPhone;
                 student.MedicalConditions = request.MedicalConditions;
-                student.PreferredTransportation = request.PreferredTransportation;
                 student.IsActive = request.IsActive;
 
                 await _context.SaveChangesAsync();
@@ -517,6 +355,9 @@ namespace Api.Controllers
                 if (request.PaidAmount > 0)
                 {
                     var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                    var userBranchId = int.Parse(User.FindFirst("BranchId")?.Value ?? "0");
+
+                    // Store a payment record
                     var payment = new Payment
                     {
                         CourseRegistrationId = registration.Id,
@@ -526,8 +367,27 @@ namespace Api.Controllers
                         ProcessedByUserId = userId,
                         Notes = "دفعة التسجيل"
                     };
-
                     _context.Payments.Add(payment);
+
+                    // Also store an income record in expenses to appear in the financial ledger
+                    var incomeExpense = new Expense
+                    {
+                        Title = $"إيراد كورس '{course.Name}' - {student.FullName}",
+                        Description = $"دفعة من الطالب {student.FullName} لكورس {course.Name}",
+                        Amount = request.PaidAmount, // Positive amount as income
+                        ExpenseDate = DateTime.UtcNow,
+                        Category = ExpenseCategory.Training,
+                        Status = ExpenseStatus.Paid,
+                        Priority = ExpensePriority.Low,
+                        PaymentMethod = request.PaymentMethod,
+                        BranchId = course.BranchId ?? userBranchId,
+                        RequestedByUserId = userId,
+                        ApprovedByUserId = userId,
+                        ApprovedAt = DateTime.UtcNow,
+                        Notes = $"إيراد من دفع رسوم الكورس - {request.Notes}",
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Expenses.Add(incomeExpense);
                 }
 
                 await _context.SaveChangesAsync();
@@ -677,7 +537,7 @@ namespace Api.Controllers
                     FullName = student.FullName,
                     Email = student.Email,
                     Phone = student.Phone,
-                    Address = student.Address,
+
                     UserRole = UserRole.Student,
                     BranchId = registration.Course.BranchId ?? 1,
                     StudentId = student.Id,
@@ -706,6 +566,7 @@ namespace Api.Controllers
             }
         }
 
+#if DEBUG
         [HttpPost("create-accounts-for-existing")]
         [Authorize(Policy = "AdminOnly")]
         public async Task<IActionResult> CreateAccountsForExistingStudents()
@@ -726,75 +587,17 @@ namespace Api.Controllers
                         continue;
                     }
 
-                    // Generate username and password
-                    var username = _passwordGenerator.GenerateUsername(student.FullName);
-                    var password = _passwordGenerator.GenerateRandomPassword();
-                    var hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
+                    var (user, _) = await CreateUserAccountForStudentAsync(student);
 
-                    // Ensure username is unique
-                    var existingUserCount = await _context.Users.CountAsync(u => u.Username.StartsWith(username));
-                    if (existingUserCount > 0)
+                    if (user != null)
                     {
-                        username = username + (existingUserCount + 1);
-                    }
-
-                    // Create user account
-                    var user = new User
-                    {
-                        Username = username,
-                        PasswordHash = hashedPassword,
-                        FullName = student.FullName,
-                        Email = student.Email,
-                        Phone = student.Phone,
-                        Role = UserRole.Student,
-                        BranchId = student.BranchId,
-                        IsActive = true,
-                        CreatedAt = DateTime.UtcNow,
-                        StudentId = student.Id
-                    };
-
-                    _context.Users.Add(user);
-                    await _context.SaveChangesAsync();
-
-                    // Send welcome email
-                    try
-                    {
-                        var emailSent = await _emailService.SendWelcomeEmailAsync(
-                            student.Email,
-                            student.FullName,
-                            username,
-                            password
-                        );
-
                         createdAccounts.Add(new
                         {
                             studentId = student.Id,
                             studentName = student.FullName,
                             email = student.Email,
-                            username = username,
-                            emailSent = emailSent
-                        });
-
-                        if (emailSent)
-                        {
-                            _logger.LogInformation($"Account created and email sent for student {student.Id} ({student.FullName})");
-                        }
-                        else
-                        {
-                            _logger.LogWarning($"Account created but email failed for student {student.Id} ({student.FullName})");
-                        }
-                    }
-                    catch (Exception emailEx)
-                    {
-                        _logger.LogError(emailEx, $"Error sending welcome email to {student.Email}");
-                        
-                        createdAccounts.Add(new
-                        {
-                            studentId = student.Id,
-                            studentName = student.FullName,
-                            email = student.Email,
-                            username = username,
-                            emailSent = false
+                            username = user.Username,
+                            emailSent = !string.IsNullOrEmpty(user.Email)
                         });
                     }
                 }
@@ -813,6 +616,7 @@ namespace Api.Controllers
                 return StatusCode(500, new { message = "حدث خطأ في إنشاء الحسابات", error = ex.Message });
             }
         }
+#endif
 
         [HttpPost("create-account/{studentId}")]
         [Authorize(Policy = "AdminOrEmployee")]
@@ -832,6 +636,32 @@ namespace Api.Controllers
                 if (string.IsNullOrEmpty(student.Email))
                     return BadRequest(new { message = "الطالب ليس لديه عنوان إيميل" });
 
+                var (user, password) = await CreateUserAccountForStudentAsync(student);
+
+                return Ok(new
+                {
+                    message = "تم إنشاء الحساب بنجاح وإرسال بيانات الدخول",
+                    studentId = student.Id,
+                    studentName = student.FullName,
+                    username = user?.Username,
+                    password = password, // فقط للاختبار - في الإنتاج لا نُرجع كلمة المرور
+                    emailSent = !string.IsNullOrEmpty(user?.Email)
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error creating account for student {studentId}");
+                return StatusCode(500, new { message = "حدث خطأ في إنشاء الحساب", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Centralized method to create a user account for a student.
+        /// </summary>
+        private async Task<(User? user, string? plainTextPassword)> CreateUserAccountForStudentAsync(Student student)
+        {
+            try
+            {
                 // Generate username and password
                 var username = _passwordGenerator.GenerateUsername(student.FullName);
                 var password = _passwordGenerator.GenerateRandomPassword();
@@ -844,7 +674,6 @@ namespace Api.Controllers
                     username = username + (existingUserCount + 1);
                 }
 
-                // Create user account
                 var user = new User
                 {
                     Username = username,
@@ -863,70 +692,26 @@ namespace Api.Controllers
                 await _context.SaveChangesAsync();
 
                 // Send welcome email
-                var emailSent = false;
-                try
+                if (!string.IsNullOrEmpty(student.Email))
                 {
-                    emailSent = await _emailService.SendWelcomeEmailAsync(
-                        student.Email,
-                        student.FullName,
-                        username,
-                        password
-                    );
-                }
-                catch (Exception emailEx)
-                {
-                    _logger.LogError(emailEx, $"Error sending welcome email to {student.Email}");
+                    var emailSent = await _emailService.SendWelcomeEmailAsync(student.Email, student.FullName, username, password);
+                    if (emailSent)
+                    {
+                        _logger.LogInformation("Welcome email sent successfully to {Email}", student.Email);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Failed to send welcome email to {Email}", student.Email);
+                    }
                 }
 
-                return Ok(new
-                {
-                    message = "تم إنشاء الحساب بنجاح وإرسال بيانات الدخول",
-                    studentId = student.Id,
-                    studentName = student.FullName,
-                    email = student.Email,
-                    username = username,
-                    password = password, // فقط للاختبار - في الإنتاج لا نُرجع كلمة المرور
-                    emailSent = emailSent
-                });
+                return (user, password);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error creating account for student {studentId}");
-                return StatusCode(500, new { message = "حدث خطأ في إنشاء الحساب", error = ex.Message });
+                _logger.LogError(ex, "Error in CreateUserAccountForStudentAsync for student {StudentId}", student.Id);
+                return (null, null);
             }
-        }
-
-        private string GenerateUsername(string fullName, string phone)
-        {
-            // إنشاء username من الاسم ورقم الهاتف
-            var namePart = fullName.Replace(" ", "").ToLower();
-            if (namePart.Length > 8) namePart = namePart.Substring(0, 8);
-
-            var phonePart = phone.Length >= 4 ? phone.Substring(phone.Length - 4) : phone;
-
-            return $"{namePart}{phonePart}";
-        }
-
-        private async Task<string> EnsureUniqueUsername(string baseUsername)
-        {
-            var username = baseUsername;
-            var counter = 1;
-
-            while (await _context.Users.AnyAsync(u => u.Username == username))
-            {
-                username = $"{baseUsername}{counter}";
-                counter++;
-            }
-
-            return username;
-        }
-
-        private string GenerateRandomPassword()
-        {
-            const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-            var random = new Random();
-            return new string(Enumerable.Repeat(chars, 8)
-                .Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
         [HttpGet("{studentId}/dashboard")]
@@ -996,6 +781,30 @@ namespace Api.Controllers
             };
         }
 
+        private string GetPaymentMethodArabic(PaymentMethod method)
+        {
+            return method switch
+            {
+                PaymentMethod.Cash => "نقدي",
+                PaymentMethod.InstaPay => "انستا باي",
+                PaymentMethod.Fawry => "فوري",
+                _ => method.ToString()
+            };
+        }
+
+        private string GetPaymentTypeArabic(PaymentType type)
+        {
+            return type switch
+            {
+                PaymentType.CourseFee => "رسوم الكورس",
+                PaymentType.Cafeteria => "الكافيتريا",
+                PaymentType.Workspace => "مساحة العمل",
+                PaymentType.Equipment => "المعدات",
+                PaymentType.Other => "أخرى",
+                _ => type.ToString()
+            };
+        }
+
         private DateTime? GetNextSessionDate(Course course)
         {
             // منطق حساب موعد الجلسة القادمة بناءً على جدول الكورس
@@ -1042,12 +851,44 @@ namespace Api.Controllers
                 if (student == null)
                     return NotFound(new { message = "بيانات الطالب غير موجودة" });
 
+                // جلب سجل المدفوعات
+                var payments = await _context.Payments
+                    .Include(p => p.CourseRegistration)
+                        .ThenInclude(cr => cr.Course)
+                    .Include(p => p.ProcessedByUser)
+                    .Where(p => p.StudentId == student.Id && p.IsActive)
+                    .OrderByDescending(p => p.PaymentDate)
+                    .Select(p => new
+                    {
+                        p.Id,
+                        p.Amount,
+                        PaymentMethod = p.PaymentMethod.ToString(),
+                        PaymentMethodArabic = GetPaymentMethodArabic(p.PaymentMethod),
+                        PaymentType = p.PaymentType.ToString(),
+                        PaymentTypeArabic = GetPaymentTypeArabic(p.PaymentType),
+                        p.PaymentDate,
+                        p.Notes,
+                        CourseName = p.CourseRegistration != null ? p.CourseRegistration.Course.Name : null,
+                        ProcessedBy = p.ProcessedByUser.FullName
+                    })
+                    .ToListAsync();
+
+                // حساب إجمالي المدفوع والمستحق
+                var totalPaid = payments.Sum(p => p.Amount);
+                var totalOwed = student.CourseRegistrations
+                    .Where(cr => cr.PaymentStatus != PaymentStatus.Cancelled)
+                    .Sum(cr => cr.TotalAmount);
+                var outstandingBalance = totalOwed - totalPaid;
+
                 var dashboardData = new StudentDashboardDTO
                 {
                     StudentId = student.Id,
                     StudentName = student.FullName,
                     Phone = student.Phone,
                     Email = student.Email,
+                    TotalPaid = totalPaid,
+                    OutstandingBalance = outstandingBalance,
+                    PaymentHistory = payments.Take(5).Cast<object>().ToList(), // آخر 5 مدفوعات
                     Courses = student.CourseRegistrations
                         .Where(cr => cr.PaymentStatus != PaymentStatus.Cancelled)
                         .Select(cr =>
@@ -1246,6 +1087,41 @@ namespace Api.Controllers
             }
         }
 
+        private AgeGroup DetermineAgeGroup(int age)
+        {
+            return age switch
+            {
+                >= 4 and <= 6 => AgeGroup.GroupA,
+                >= 7 and <= 10 => AgeGroup.GroupB,
+                >= 11 and <= 12 => AgeGroup.GroupC,
+                >= 13 and <= 17 => AgeGroup.GroupD,
+                _ => AgeGroup.GroupA
+            };
+        }
+
+        private static string GetAgeGroupArabic(AgeGroup ageGroup)
+        {
+            return ageGroup switch
+            {
+                AgeGroup.GroupA => "الفئة أ (4-6 سنوات)",
+                AgeGroup.GroupB => "الفئة ب (7-10 سنوات)",
+                AgeGroup.GroupC => "الفئة ج (11-12 سنة)",
+                AgeGroup.GroupD => "الفئة د (13-17 سنة)",
+                _ => "غير محدد"
+            };
+        }
+
+        private static string GetLevelArabic(StudentLevel level)
+        {
+            return level switch
+            {
+                StudentLevel.Level1 => "المستوى الأول",
+                StudentLevel.Level2 => "المستوى الثاني",
+                StudentLevel.Level3 => "المستوى الثالث",
+                _ => "غير محدد"
+            };
+        }
+
         private string GenerateCertificateNumber(string courseName, string studentName)
         {
             var courseCode = courseName.Length >= 3 ? courseName.Substring(0, 3).ToUpper() : courseName.ToUpper();
@@ -1275,15 +1151,20 @@ namespace Api.Controllers
         public string? Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "العمر مطلوب")]
-        [Range(4, 100, ErrorMessage = "العمر يجب أن يكون بين 4 و 100 سنة")]
+        [Range(4, 17, ErrorMessage = "العمر يجب أن يكون بين 4 و 17 سنة")]
         public int Age { get; set; }
+
+        public AgeGroup AgeGroup { get; set; } // سيتم تحديده تلقائياً بناءً على العمر
+
+        [Required(ErrorMessage = "المستوى مطلوب")]
+        public StudentLevel Level { get; set; }
 
         [Required(ErrorMessage = "الجنس مطلوب")]
         [MaxLength(10, ErrorMessage = "الجنس يجب ألا يتجاوز 10 أحرف")]
         public string Gender { get; set; } = string.Empty;
 
-        [MaxLength(200, ErrorMessage = "العنوان يجب ألا يتجاوز 200 حرف")]
-        public string Address { get; set; } = string.Empty;
+        [MaxLength(100, ErrorMessage = "اسم المدرسة يجب ألا يتجاوز 100 حرف")]
+        public string School { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "اسم ولي الأمر مطلوب")]
         [MaxLength(100, ErrorMessage = "اسم ولي الأمر يجب ألا يتجاوز 100 حرف")]
@@ -1294,10 +1175,6 @@ namespace Api.Controllers
         [RegularExpression(@"^01[0-2,5]{1}[0-9]{8}$", ErrorMessage = "رقم هاتف غير صحيح (01xxxxxxxxx)")]
         public string ParentPhone { get; set; } = string.Empty;
 
-        [EmailAddress(ErrorMessage = "بريد إلكتروني غير صحيح")]
-        [MaxLength(100, ErrorMessage = "البريد الإلكتروني يجب ألا يتجاوز 100 حرف")]
-        public string? ParentEmail { get; set; } = string.Empty;
-
         [MaxLength(100, ErrorMessage = "اسم جهة الاتصال يجب ألا يتجاوز 100 حرف")]
         public string EmergencyContact { get; set; } = string.Empty;
 
@@ -1307,9 +1184,6 @@ namespace Api.Controllers
 
         [MaxLength(500, ErrorMessage = "الحالة الطبية يجب ألا تتجاوز 500 حرف")]
         public string MedicalConditions { get; set; } = string.Empty;
-
-        [MaxLength(100, ErrorMessage = "وسيلة النقل يجب ألا تتجاوز 100 حرف")]
-        public string PreferredTransportation { get; set; } = string.Empty;
     }
 
     public class UpdateStudentRequest : CreateStudentRequest

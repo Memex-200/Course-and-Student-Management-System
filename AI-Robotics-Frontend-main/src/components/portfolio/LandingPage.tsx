@@ -1,40 +1,32 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import {
-  Brain,
-  Bot,
-  Code,
-  Cpu,
-  ArrowRight,
-  Phone,
-  Mail,
-  MapPin,
-  Users,
-  Award,
-  Star,
-  Monitor,
-  Coffee,
-  Calendar,
-  Zap,
-  Rocket,
-  Sparkles,
-  CircuitBoard,
-  Wifi,
-  Database,
-  Smartphone,
-  Globe,
-  Shield,
-  Target,
-  TrendingUp,
-  Lightbulb,
-  Cog,
-  Atom,
-  Binary,
-  Microwave as Microchip,
-  BookOpen,
-  Facebook,
-  Instagram,
-} from "lucide-react";
+import { Brain } from "lucide-react";
+import { Bot } from "lucide-react";
+import { Code } from "lucide-react";
+import { Cpu } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { Phone } from "lucide-react";
+import { Mail } from "lucide-react";
+import { MapPin } from "lucide-react";
+import { Users } from "lucide-react";
+import { Award } from "lucide-react";
+import { Star } from "lucide-react";
+import { Monitor } from "lucide-react";
+import { Coffee } from "lucide-react";
+import { Calendar } from "lucide-react";
+import { Zap } from "lucide-react";
+import { Rocket } from "lucide-react";
+import { Sparkles } from "lucide-react";
+import { Database } from "lucide-react";
+import { Smartphone } from "lucide-react";
+import { Globe } from "lucide-react";
+import { Cog } from "lucide-react";
+import { Atom } from "lucide-react";
+import { Binary } from "lucide-react";
+import { Chip } from "lucide-react";
+import { BookOpen } from "lucide-react";
+import { Facebook } from "lucide-react";
+import { Instagram } from "lucide-react";
 
 const LandingPage: React.FC = () => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
@@ -352,7 +344,7 @@ const LandingPage: React.FC = () => {
 
               {/* Orbiting elements */}
               <div className="absolute -inset-4">
-                {[Zap, Atom, Binary, Microchip].map((Icon, index) => (
+                {[Zap, Atom, Binary, Chip].map((Icon, index) => (
                   <div
                     key={index}
                     className="absolute w-8 h-8 text-primary-400 animate-rotate-slow"

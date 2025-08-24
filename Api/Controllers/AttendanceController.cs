@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text;
+using Api.Services;
+using BCrypt.Net;
 
 namespace Api.Controllers
 {
@@ -14,10 +16,14 @@ namespace Api.Controllers
     public class AttendanceController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<AttendanceController> _logger;
+        private readonly IPasswordGeneratorService _passwordGenerator;
 
-        public AttendanceController(ApplicationDbContext context)
+        public AttendanceController(ApplicationDbContext context, ILogger<AttendanceController> logger, IPasswordGeneratorService passwordGenerator)
         {
             _context = context;
+            _logger = logger;
+            _passwordGenerator = passwordGenerator;
         }
 
         [HttpGet("courses/{courseId}")]
@@ -89,7 +95,7 @@ namespace Api.Controllers
                 {
                     if (s.Id == 0 || string.IsNullOrWhiteSpace(s.FullName))
                     {
-                        Console.WriteLine($"[AttendanceController] طالب ببيانات ناقصة: Id={s.Id}, FullName={s.FullName}");
+                        _logger.LogWarning("[AttendanceController] Student with incomplete data found: Id={StudentId}, FullName={StudentFullName}", s.Id, s.FullName);
                     }
                 }
 
@@ -102,15 +108,10 @@ namespace Api.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AttendanceController] ERROR: {ex.Message}");
-                Console.WriteLine($"[AttendanceController] STACK: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                    Console.WriteLine($"[AttendanceController] INNER: {ex.InnerException.Message}");
+                _logger.LogError(ex, "Error getting course attendance for course {CourseId}", courseId);
                 return StatusCode(500, new {
                     message = "حدث خطأ في الخادم",
                     error = ex.Message,
-                    stack = ex.StackTrace,
-                    inner = ex.InnerException?.Message
                 });
             }
         }
@@ -224,9 +225,9 @@ namespace Api.Controllers
                         if (student.UserId == null || student.UserId == 0)
                         {
                             // توليد اسم مستخدم وكلمة مرور عشوائية
-                            var username = $"student{student.Id}";
-                            var password = GenerateRandomPassword(8);
-                            var passwordHash = HashPassword(password);
+                            var username = _passwordGenerator.GenerateUsername(student.FullName);
+                            var password = _passwordGenerator.GenerateRandomPassword();
+                            var passwordHash = BCrypt.HashPassword(password); // Use BCrypt for consistency and security
                             var email = string.IsNullOrWhiteSpace(student.Email) ? $"student{student.Id}@company.com" : student.Email;
 
                             var newUser = new User
@@ -235,7 +236,7 @@ namespace Api.Controllers
                                 Username = username,
                                 Email = email,
                                 Phone = student.Phone,
-                                Address = student.Address,
+
                                 PasswordHash = passwordHash,
                                 Role = UserRole.Student,
                                 UserRole = UserRole.Student,
@@ -481,29 +482,6 @@ namespace Api.Controllers
             };
         }
 
-        private static string GenerateRandomPassword(int length)
-        {
-            const string valid = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
-            var res = new StringBuilder();
-            using (var rng = new System.Security.Cryptography.RNGCryptoServiceProvider())
-            {
-                var uintBuffer = new byte[sizeof(uint)];
-                while (res.Length < length)
-                {
-                    rng.GetBytes(uintBuffer);
-                    var num = BitConverter.ToUInt32(uintBuffer, 0);
-                    res.Append(valid[(int)(num % (uint)valid.Length)]);
-                }
-            }
-            return res.ToString();
-        }
-
-        private static string HashPassword(string password)
-        {
-            using var sha256 = System.Security.Cryptography.SHA256.Create();
-            var bytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
-            return BitConverter.ToString(bytes).Replace("-", "").ToLower();
-        }
     }
 
     public class CreateAttendanceSessionRequest

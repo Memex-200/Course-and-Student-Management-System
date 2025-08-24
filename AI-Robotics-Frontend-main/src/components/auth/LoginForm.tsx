@@ -2,17 +2,14 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { authAPI } from "../../lib/api";
-import {
-  Eye,
-  EyeOff,
-  LogIn,
-  Loader2,
-  Brain,
-  Bot,
-  Zap,
-  CircuitBoard,
-  Sparkles,
-} from "lucide-react";
+import { Eye } from "lucide-react";
+import { LogIn } from "lucide-react";
+import { Loader } from "lucide-react";
+import { Brain } from "lucide-react";
+import { Bot } from "lucide-react";
+import { Zap } from "lucide-react";
+import { CircuitBoard } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import { UserRole, AuthResponse } from "../../types";
 
@@ -279,11 +276,7 @@ const LoginForm: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-300 transition-colors p-1 rounded-lg hover:bg-primary-900/20"
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
+                  <Eye className="w-5 h-5" />
                 </button>
                 <div className="absolute inset-0 bg-gradient-to-r from-primary-500/10 to-accent-500/10 opacity-0 focus-within:opacity-100 transition-opacity rounded-xl pointer-events-none"></div>
               </div>
@@ -297,7 +290,7 @@ const LoginForm: React.FC = () => {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader className="w-5 h-5 animate-spin" />
                   <span>جاري تسجيل الدخول</span>
                   <div className="loading-dots"></div>
                 </>

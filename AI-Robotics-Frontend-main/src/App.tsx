@@ -35,6 +35,8 @@ import PointOfSale from "./components/cafeteria/PointOfSale";
 import OrdersManagement from "./components/cafeteria/OrdersManagement";
 import CafeteriaReports from "./components/cafeteria/CafeteriaReports";
 import AttendanceManagement from "./components/dashboard/AttendanceManagement";
+import GradesManagement from "./components/dashboard/GradesManagement";
+import StudentGrades from "./components/student/StudentGrades";
 
 // Default redirect component based on user role
 const DefaultRedirect = () => {
@@ -78,8 +80,8 @@ function App() {
                   color: "#FFFFFF",
                 },
                 iconTheme: {
-                  primary: '#FFFFFF',
-                  secondary: '#10B981',
+                  primary: "#FFFFFF",
+                  secondary: "#10B981",
                 },
               },
               error: {
@@ -88,8 +90,8 @@ function App() {
                   color: "#FFFFFF",
                 },
                 iconTheme: {
-                  primary: '#FFFFFF',
-                  secondary: '#EF4444',
+                  primary: "#FFFFFF",
+                  secondary: "#EF4444",
                 },
               },
             }}
@@ -100,7 +102,16 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginForm />} />
             <Route path="/register" element={<RegisterForm />} />
-            <Route path="/expenses" element={<ExpensesPage />} />
+            <Route
+              path="/expenses"
+              element={
+                <ProtectedRoute
+                  requiredRoles={[UserRole.Admin, UserRole.Employee]}
+                >
+                  <ExpensesPage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/payments"
               element={
@@ -270,7 +281,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              
+
               {/* Cafeteria Routes */}
               <Route
                 path="/cafeteria"
@@ -366,6 +377,14 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/student/grades"
+                element={
+                  <ProtectedRoute requiredRoles={[UserRole.Student]}>
+                    <StudentGrades />
+                  </ProtectedRoute>
+                }
+              />
             </Route>
 
             {/* Attendance Routes */}
@@ -373,8 +392,20 @@ function App() {
               <Route
                 path="/attendance"
                 element={
-                  <ProtectedRoute requiredRoles={[UserRole.Admin, UserRole.Employee]}>
+                  <ProtectedRoute
+                    requiredRoles={[UserRole.Admin, UserRole.Employee]}
+                  >
                     <AttendanceManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/grades"
+                element={
+                  <ProtectedRoute
+                    requiredRoles={[UserRole.Admin, UserRole.Employee]}
+                  >
+                    <GradesManagement />
                   </ProtectedRoute>
                 }
               />

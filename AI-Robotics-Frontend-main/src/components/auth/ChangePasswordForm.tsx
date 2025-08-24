@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { authAPI } from '../../lib/api';
-import { Eye, EyeOff, Lock, Loader2, Shield } from 'lucide-react';
-import toast from 'react-hot-toast';
+import React, { useState } from "react";
+import { useAuth } from "../../contexts/AuthContext";
+import { authAPI } from "../../lib/api";
+import { Eye } from "lucide-react";
+import { Lock } from "lucide-react";
+import { Shield } from "lucide-react";
+import { Loader } from "lucide-react";
+import toast from "react-hot-toast";
 
 const ChangePasswordForm: React.FC = () => {
   const [formData, setFormData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -17,7 +20,7 @@ const ChangePasswordForm: React.FC = () => {
   const { user } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
     }));
@@ -25,14 +28,14 @@ const ChangePasswordForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.newPassword !== formData.confirmPassword) {
-      toast.error('كلمات المرور الجديدة غير متطابقة');
+      toast.error("كلمات المرور الجديدة غير متطابقة");
       return;
     }
 
     if (formData.newPassword.length < 6) {
-      toast.error('كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل');
+      toast.error("كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل");
       return;
     }
 
@@ -41,18 +44,18 @@ const ChangePasswordForm: React.FC = () => {
     try {
       await authAPI.changePassword({
         currentPassword: formData.currentPassword,
-        newPassword: formData.newPassword
+        newPassword: formData.newPassword,
       });
-      
-      toast.success('تم تغيير كلمة المرور بنجاح');
+
+      toast.success("تم تغيير كلمة المرور بنجاح");
       setFormData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
       });
     } catch (error: any) {
-      console.error('Change password error:', error);
-      toast.error(error.response?.data?.message || 'خطأ في تغيير كلمة المرور');
+      console.error("Change password error:", error);
+      toast.error(error.response?.data?.message || "خطأ في تغيير كلمة المرور");
     } finally {
       setIsLoading(false);
     }
@@ -67,26 +70,27 @@ const ChangePasswordForm: React.FC = () => {
             <div className="w-16 h-16 bg-gradient-to-br from-primary-400 to-accent-500 rounded-xl flex items-center justify-center mx-auto mb-4 glow-blue">
               <Shield className="w-8 h-8 text-white" />
             </div>
-            
+
             <h2 className="text-2xl font-bold bg-gradient-to-r from-primary-300 to-accent-400 bg-clip-text text-transparent mb-2">
               تغيير كلمة المرور
             </h2>
-            <p className="text-gray-400">
-              مرحباً {user?.fullName}
-            </p>
+            <p className="text-gray-400">مرحباً {user?.fullName}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Current Password */}
             <div className="relative">
-              <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="currentPassword"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
                 كلمة المرور الحالية
               </label>
               <div className="relative">
                 <input
                   id="currentPassword"
                   name="currentPassword"
-                  type={showCurrentPassword ? 'text' : 'password'}
+                  type={showCurrentPassword ? "text" : "password"}
                   required
                   value={formData.currentPassword}
                   onChange={handleChange}
@@ -98,21 +102,28 @@ const ChangePasswordForm: React.FC = () => {
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-400 transition-colors"
                 >
-                  {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showCurrentPassword ? (
+                    <Eye className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
             </div>
 
             {/* New Password */}
             <div className="relative">
-              <label htmlFor="newPassword" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="newPassword"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
                 كلمة المرور الجديدة
               </label>
               <div className="relative">
                 <input
                   id="newPassword"
                   name="newPassword"
-                  type={showNewPassword ? 'text' : 'password'}
+                  type={showNewPassword ? "text" : "password"}
                   required
                   value={formData.newPassword}
                   onChange={handleChange}
@@ -124,21 +135,28 @@ const ChangePasswordForm: React.FC = () => {
                   onClick={() => setShowNewPassword(!showNewPassword)}
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-400 transition-colors"
                 >
-                  {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showNewPassword ? (
+                    <Eye className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
             </div>
 
             {/* Confirm New Password */}
             <div className="relative">
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
                 تأكيد كلمة المرور الجديدة
               </label>
               <div className="relative">
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  type={showConfirmPassword ? "text" : "password"}
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}
@@ -150,7 +168,11 @@ const ChangePasswordForm: React.FC = () => {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-primary-400 transition-colors"
                 >
-                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showConfirmPassword ? (
+                    <Eye className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -163,7 +185,7 @@ const ChangePasswordForm: React.FC = () => {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader className="w-5 h-5 animate-spin" />
                   <span>جاري التحديث...</span>
                 </>
               ) : (

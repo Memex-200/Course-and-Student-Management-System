@@ -38,6 +38,7 @@ namespace Api.Data
         public DbSet<SharedWorkspace> SharedWorkspaces { get; set; }
         public DbSet<SharedWorkspaceBooking> SharedWorkspaceBookings { get; set; }
         public DbSet<WorkspaceOccupancy> WorkspaceOccupancies { get; set; }
+        public DbSet<StudentGrade> StudentGrades { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -164,6 +165,10 @@ namespace Api.Data
                       .WithMany(swb => swb.Payments)
                       .HasForeignKey(e => e.SharedWorkspaceBookingId)
                       .OnDelete(DeleteBehavior.NoAction);
+                entity.HasOne(e => e.Branch)
+                      .WithMany()
+                      .HasForeignKey(e => e.BranchId)
+                      .OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne(e => e.ProcessedByUser)
                       .WithMany()
                       .HasForeignKey(e => e.ProcessedByUserId)
@@ -540,6 +545,32 @@ namespace Api.Data
                       .WithMany()
                       .HasForeignKey(e => e.BookedByUserId)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // StudentGrade Configuration
+            modelBuilder.Entity<StudentGrade>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Grade).HasColumnType("decimal(5,2)");
+                entity.Property(e => e.Notes).HasMaxLength(500);
+                entity.HasOne(e => e.Student)
+                      .WithMany()
+                      .HasForeignKey(e => e.StudentId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Course)
+                      .WithMany()
+                      .HasForeignKey(e => e.CourseId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.CreatedByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.CreatedByUserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.UpdatedByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.UpdatedByUserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                // Ensure unique combination of StudentId and CourseId
+                entity.HasIndex(e => new { e.StudentId, e.CourseId }).IsUnique();
             });
 
             // Seed Data

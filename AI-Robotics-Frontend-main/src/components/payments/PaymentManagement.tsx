@@ -1,44 +1,17 @@
 import React, { useEffect, useState } from "react";
-import axios from "../../lib/api/axios";
 import { toast } from "react-hot-toast";
-import {
-  DollarSign,
-  Users,
-  BookText,
-  Calendar,
-  CreditCard,
-  Edit,
-  Trash2,
-  Plus,
-  Search,
-  Filter,
-  FileDown,
-} from "lucide-react";
+import paymentsAPI, {
+  PaymentRecord,
+  CourseRegistration,
+  PaymentData,
+} from "../../lib/api/paymentsAPI.ts";
+import { DollarSign } from "lucide-react";
+import { Users } from "lucide-react";
+import { Calendar } from "lucide-react";
+import { Search } from "lucide-react";
+import { RotateCcw } from "lucide-react";
+import { Download } from "lucide-react";
 import * as XLSX from "xlsx";
-
-interface PaymentRecord {
-  id: number;
-  studentName: string;
-  courseName: string;
-  amount: number;
-  paymentMethod: string;
-  paymentMethodArabic: string;
-  paymentDate: string;
-  processedBy: string;
-  notes: string;
-  registrationId: number;
-}
-
-interface CourseRegistration {
-  id: number;
-  student: { id: number; fullName: string };
-  course: { id: number; name: string };
-  totalAmount: number;
-  paidAmount: number;
-  remainingAmount: number;
-  paymentStatus: string;
-  paymentStatusArabic: string;
-}
 
 const PaymentManagement: React.FC = () => {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
@@ -50,6 +23,7 @@ const PaymentManagement: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<"payments" | "unpaid">(
     "payments"
   );
+  const [error, setError] = useState<string | null>(null);
 
   // Payment Modal State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -67,25 +41,21 @@ const PaymentManagement: React.FC = () => {
 
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
-      // Fetch payment records
-      const paymentsResponse = await axios.get("/payments/detailed-payments");
-      if (paymentsResponse.data.success) {
-        setPayments(paymentsResponse.data.data || []);
-      }
+      // Fetch payment records using the API service
+      const paymentsData = await paymentsAPI.getDetailedPayments();
+      setPayments(paymentsData);
 
       // Fetch unpaid registrations
-      const registrationsResponse = await axios.get(
-        "/payments/course-registrations"
+      const registrationsData = await paymentsAPI.getCourseRegistrations();
+      const unpaid = registrationsData.filter(
+        (reg: any) => reg.paymentStatus !== "FullyPaid"
       );
-      if (registrationsResponse.data) {
-        const unpaid = registrationsResponse.data.filter(
-          (reg: any) => reg.paymentStatus !== "FullyPaid"
-        );
-        setUnpaidRegistrations(unpaid);
-      }
+      setUnpaidRegistrations(unpaid);
     } catch (error) {
       console.error("Error fetching data:", error);
+      setError("خطأ في تحميل البيانات");
       toast.error("خطأ في تحميل البيانات");
     } finally {
       setLoading(false);
@@ -98,25 +68,18 @@ const PaymentManagement: React.FC = () => {
       return;
     }
 
-    try {
-      const response = await axios.post(
-        `/payments/course-registrations/${selectedRegistration.id}/payment`,
-        {
-          amount: parseFloat(paymentData.amount),
-          paymentMethod: paymentData.paymentMethod,
-          notes: paymentData.notes,
-        }
-      );
+    const result = await paymentsAPI.processPayment(
+      selectedRegistration.id,
+      paymentData
+    );
 
-      if (response.data.message) {
-        toast.success(response.data.message);
-        setPaymentModalOpen(false);
-        setPaymentData({ amount: "", paymentMethod: "Cash", notes: "" });
-        fetchData();
-      }
-    } catch (error: any) {
-      console.error("Error processing payment:", error);
-      toast.error(error.response?.data?.message || "خطأ في معالجة الدفعة");
+    if (result.success) {
+      toast.success(result.message);
+      setPaymentModalOpen(false);
+      setPaymentData({ amount: "", paymentMethod: "Cash", notes: "" });
+      fetchData();
+    } else {
+      toast.error(result.message);
     }
   };
 
@@ -127,6 +90,7 @@ const PaymentManagement: React.FC = () => {
             "اسم الطالب": payment.studentName,
             "اسم الكورس": payment.courseName,
             المبلغ: payment.amount,
+            "نوع العملية": "دخل",
             "طريقة الدفع": payment.paymentMethodArabic,
             "تاريخ الدفع": new Date(payment.paymentDate).toLocaleDateString(
               "ar-EG"
@@ -171,7 +135,10 @@ const PaymentManagement: React.FC = () => {
   );
 
   return (
-    <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div
+      className="p-6 bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen"
+      dir="rtl"
+    >
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
@@ -180,14 +147,33 @@ const PaymentManagement: React.FC = () => {
               <DollarSign className="w-8 h-8 text-green-500" />
               إدارة المدفوعات
             </h1>
-            <button
-              onClick={exportToExcel}
-              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-            >
-              <FileDown className="w-4 h-4" />
-              تصدير Excel
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+              >
+                <RotateCcw
+                  className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+                />
+                تحديث
+              </button>
+              <button
+                onClick={exportToExcel}
+                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                تصدير Excel
+              </button>
+            </div>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {error}
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="flex space-x-4 mb-4">

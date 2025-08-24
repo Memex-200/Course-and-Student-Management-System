@@ -33,15 +33,9 @@ namespace Api.Controllers
                     .Include(e => e.ApprovedByUser)
                     .AsQueryable();
 
-                // إذا كان المستخدم ليس Admin، فلتر على الفرع
-                if (userRole != "Admin")
-                {
-                    if (branchId.HasValue)
-                        query = query.Where(e => e.BranchId == branchId.Value);
-                    else
-                        query = query.Where(e => e.BranchId == userBranchId);
-                }
-                else if (branchId.HasValue)
+                // Filter by branch if a branchId is provided.
+                // If no branchId is provided, transactions from all branches are returned for all roles.
+                if (branchId.HasValue)
                 {
                     query = query.Where(e => e.BranchId == branchId.Value);
                 }
@@ -83,7 +77,8 @@ namespace Api.Controllers
                         e.ApprovedAt,
                         e.CreatedAt,
                         e.Notes,
-                        Type = e.Amount >= 0 ? "إيراد" : "مصروف" // تحديد نوع العملية
+                        Type = e.Amount >= 0 ? "إيراد" : "مصروف", // تحديد نوع العملية
+                        TransactionType = e.Amount >= 0 ? "income" : "expense" // نوع المعاملة للفرونت إند
                     })
                     .ToListAsync();
 

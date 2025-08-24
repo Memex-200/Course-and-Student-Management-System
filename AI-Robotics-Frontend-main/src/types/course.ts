@@ -1,4 +1,4 @@
-import { Student, Course as BaseCourse, Branch } from './index';
+import { Student, Course as BaseCourse } from "./index";
 
 export interface EnrolledStudent {
   Id: number;
@@ -22,7 +22,7 @@ export interface CourseEnrollment {
   courseId: number;
   studentId: number;
   enrollmentDate: string;
-  status: 'active' | 'completed' | 'dropped';
+  status: "active" | "completed" | "dropped";
   course?: CourseWithEnrollments;
   student?: Student;
 }
@@ -47,8 +47,16 @@ export interface CourseFormData {
   startTime?: string;
   endTime?: string;
   scheduleDetails: {
-    days: ('Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday')[];
+    days: (
+      | "Sunday"
+      | "Monday"
+      | "Tuesday"
+      | "Wednesday"
+      | "Thursday"
+      | "Friday"
+      | "Saturday"
+    )[];
     startTime: string;
     endTime: string;
   };
-} 
+}

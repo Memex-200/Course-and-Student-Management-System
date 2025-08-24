@@ -11,7 +11,7 @@ import {
   Download,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import axios from "../../lib/api/axios";
+import axios from "../../lib/api/axios.ts";
 
 interface StudentCourse {
   courseId: number;
@@ -37,6 +37,9 @@ interface StudentDashboardData {
   studentName: string;
   phone: string;
   email: string;
+  totalPaid: number;
+  outstandingBalance: number;
+  paymentHistory: any[];
   courses: StudentCourse[];
 }
 
@@ -127,7 +130,7 @@ const StudentDashboard: React.FC = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-8">
           <div className="bg-secondary-800/50 backdrop-blur-sm rounded-2xl p-6 border border-primary-500/20">
             <div className="flex items-center justify-between">
               <div>
@@ -173,12 +176,92 @@ const StudentDashboard: React.FC = () => {
               <XCircle className="w-8 h-8 text-red-400" />
             </div>
           </div>
+
+          <div className="bg-green-600/20 backdrop-blur-sm rounded-2xl p-6 border border-green-500/30">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-300 text-sm">إجمالي المدفوع</p>
+                <p className="text-2xl font-bold text-green-400">
+                  {studentInfo.totalPaid.toLocaleString()} جنيه
+                </p>
+              </div>
+              <span className="w-8 h-8 text-green-400 text-2xl">💰</span>
+            </div>
+          </div>
+
+          <div className={`backdrop-blur-sm rounded-2xl p-6 border ${
+            studentInfo.outstandingBalance > 0 
+              ? "bg-red-600/20 border-red-500/30" 
+              : "bg-green-600/20 border-green-500/30"
+          }`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm">الرصيد المستحق</p>
+                <p className={`text-2xl font-bold ${
+                  studentInfo.outstandingBalance > 0 ? "text-red-400" : "text-green-400"
+                }`}>
+                  {studentInfo.outstandingBalance.toLocaleString()} جنيه
+                </p>
+              </div>
+              <span className={`w-8 h-8 text-2xl ${
+                studentInfo.outstandingBalance > 0 ? "text-red-400" : "text-green-400"
+              }`}>
+                {studentInfo.outstandingBalance > 0 ? "⚠️" : "✅"}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Notice */}
         <div className="mb-6 p-4 bg-blue-500/20 border border-blue-500/30 rounded-lg text-blue-300 text-center font-medium">
           أول جلسة من كل كورس مجانية. عند حضور الجلسة الثانية يتم تفعيل الدفع تلقائيًا لهذا الكورس.
         </div>
+
+        {/* Payment History */}
+        {studentInfo.paymentHistory.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+              <span className="text-2xl">💰</span>
+              سجل المدفوعات
+            </h2>
+            <div className="bg-secondary-800/30 backdrop-blur-sm rounded-2xl border border-primary-500/20 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className="bg-secondary-700/50">
+                    <tr>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-primary-300">المبلغ</th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-primary-300">نوع الدفع</th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-primary-300">طريقة الدفع</th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-primary-300">التاريخ</th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-primary-300">الكورس</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-primary-500/20">
+                    {studentInfo.paymentHistory.map((payment, index) => (
+                      <tr key={index} className="hover:bg-secondary-700/30">
+                        <td className="px-6 py-4 font-bold text-green-400">
+                          {payment.amount.toLocaleString()} جنيه
+                        </td>
+                        <td className="px-6 py-4 text-primary-200">
+                          {payment.paymentTypeArabic}
+                        </td>
+                        <td className="px-6 py-4 text-primary-200">
+                          {payment.paymentMethodArabic}
+                        </td>
+                        <td className="px-6 py-4 text-primary-200">
+                          {new Date(payment.paymentDate).toLocaleDateString('ar-EG')}
+                        </td>
+                        <td className="px-6 py-4 text-primary-200">
+                          {payment.courseName || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Courses Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

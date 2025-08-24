@@ -34,30 +34,26 @@ namespace Api.Controllers
                 // Log request details
                 var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
                 var userBranchIdClaim = User.FindFirst("BranchId")?.Value;
-                Console.WriteLine($"GetCourses called by user with role {userRole} and branchId {userBranchIdClaim}");
-                Console.WriteLine($"Query params - branchId: {branchId}, categoryId: {categoryId}");
+                _logger.LogInformation("GetCourses called by user with role {UserRole} and branchId {BranchIdClaim}", userRole, userBranchIdClaim);
+                _logger.LogInformation("Query params - branchId: {BranchId}, categoryId: {CategoryId}", branchId, categoryId);
 
                 // Log all claims
                 foreach (var claim in User.Claims)
                 {
-                    Console.WriteLine($"Claim: {claim.Type} = {claim.Value}");
+                    _logger.LogDebug("Claim: {ClaimType} = {ClaimValue}", claim.Type, claim.Value);
                 }
 
                 // Get total count before any filtering
                 var totalCount = await _context.Courses.CountAsync();
-                Console.WriteLine($"Total courses in database (before filters): {totalCount}");
+                _logger.LogInformation("Total courses in database (before filters): {TotalCount}", totalCount);
 
                 // Log some sample courses
                 var sampleCourses = await _context.Courses
                     .Take(5)
                     .Select(c => new { c.Id, c.Name, c.BranchId, c.CourseCategoryId, c.IsActive })
                     .ToListAsync();
-
-                Console.WriteLine("Sample courses from database:");
-                foreach (var course in sampleCourses)
-                {
-                    Console.WriteLine($"ID: {course.Id}, Name: {course.Name}, BranchId: {course.BranchId}, CategoryId: {course.CourseCategoryId}, IsActive: {course.IsActive}");
-                }
+                
+                _logger.LogDebug("Sample courses from database: {SampleCourses}", System.Text.Json.JsonSerializer.Serialize(sampleCourses));
 
                 var query = _context.Courses
                     .Include(c => c.CourseCategory)
@@ -69,7 +65,7 @@ namespace Api.Controllers
                     .Include(c => c.CourseRegistrations)
                     .AsQueryable();
 
-                Console.WriteLine("Initial query created with includes");
+                _logger.LogDebug("Initial query created with includes");
 
                 // REMOVE branch filtering: show all courses to all users
 
@@ -77,12 +73,12 @@ namespace Api.Controllers
                 if (categoryId.HasValue)
                 {
                     query = query.Where(c => c.CourseCategoryId == categoryId.Value);
-                    Console.WriteLine($"Filtered by category: {categoryId.Value}");
+                    _logger.LogInformation("Filtered by category: {CategoryId}", categoryId.Value);
                 }
 
                 // Log the SQL query
                 var sql = query.ToQueryString();
-                Console.WriteLine($"Generated SQL query: {sql}");
+                _logger.LogDebug("Generated SQL query: {SQL}", sql);
 
                 var courses = await query
                     .OrderByDescending(c => c.CreatedAt)
@@ -120,31 +116,46 @@ namespace Api.Controllers
                     })
                     .ToListAsync();
 
-                Console.WriteLine($"Found {courses.Count} courses after applying filters");
+                _logger.LogInformation("Found {CourseCount} courses after applying filters", courses.Count);
 
                 return Ok(new { success = true, data = courses });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ERROR] GetCourses Exception: {ex.Message}");
-                Console.WriteLine($"[ERROR] Stack trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"[ERROR] Inner exception: {ex.InnerException.Message}");
-                    Console.WriteLine($"[ERROR] Inner stack trace: {ex.InnerException.StackTrace}");
-                }
-                // Log all claims for debugging
-                Console.WriteLine("[ERROR] User Claims:");
-                foreach (var claim in User.Claims)
-                {
-                    Console.WriteLine($"[ERROR] Claim: {claim.Type} = {claim.Value}");
-                }
-                Console.WriteLine($"[ERROR] Query params - branchId: {branchId}, categoryId: {categoryId}");
+                _logger.LogError(ex, "Error getting courses. Query params - branchId: {BranchId}, categoryId: {CategoryId}", branchId, categoryId);
                 return StatusCode(500, new { success = false, message = "حدث خطأ في الخادم", error = ex.Message });
             }
         }
 
+        // GET: api/courses/all
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllCourses()
+        {
+            try
+            {
+                var courses = await _context.Courses
+                    .Where(c => c.IsActive)
+                    .OrderBy(c => c.Name)
+                    .Select(c => new
+                    {
+                        c.Id,
+                        c.Name,
+                        c.Description,
+                        c.Price
+                    })
+                    .ToListAsync();
+
+                return Ok(courses);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting all courses");
+                return StatusCode(500, new { message = "حدث خطأ في الخادم", error = ex.Message });
+            }
+        }
+
         [HttpGet("test-data")]
+        [Authorize(Policy = "AdminOrEmployee")]
         public async Task<IActionResult> GetTestData()
         {
             try
@@ -186,30 +197,11 @@ namespace Api.Controllers
                         .ThenInclude(cr => cr.Student)
                     .FirstOrDefaultAsync(c => c.Id == id);
 
-                // Additional debug - check students in database
-                var allStudents = await _context.Students.Take(5).ToListAsync();
-                Console.WriteLine($"Sample students in database:");
-                foreach (var s in allStudents)
-                {
-                    Console.WriteLine($"Student ID: {s.Id}, Name: '{s.FullName}', Phone: '{s.Phone}'");
-                }
-
                 if (course == null)
                     return NotFound(new { success = false, message = "الكورس غير موجود" });
 
                 // Debug logging
-                Console.WriteLine($"Course {id} found with {course.CourseRegistrations?.Count ?? 0} registrations");
-                if (course.CourseRegistrations != null)
-                {
-                    foreach (var reg in course.CourseRegistrations)
-                    {
-                        Console.WriteLine($"Registration ID: {reg.Id}, Student: {reg.Student?.FullName}, Status: {reg.PaymentStatus}");
-                        if (reg.Student != null)
-                        {
-                            Console.WriteLine($"Student details - ID: {reg.Student.Id}, Name: '{reg.Student.FullName}', Phone: '{reg.Student.Phone}'");
-                        }
-                    }
-                }
+                _logger.LogDebug("Course {CourseId} found with {RegistrationCount} registrations.", id, course.CourseRegistrations?.Count ?? 0);
 
                 var result = new CourseDTO
                 {
@@ -245,9 +237,7 @@ namespace Api.Controllers
                     EnrolledStudents = course.CourseRegistrations
                         .Where(cr => cr.PaymentStatus != PaymentStatus.Cancelled)
                         .Select(cr => {
-                            Console.WriteLine($"Creating EnrolledStudentDTO - StudentId: {cr.Student?.Id}, Name: '{cr.Student?.FullName}', RegId: {cr.Id}");
-                            return new EnrolledStudentDTO
-                        {
+                            return new EnrolledStudentDTO {
                             Id = cr.Student.Id,
                             RegistrationId = cr.Id,
                                 FullName = cr.Student.FullName ?? "اسم غير متوفر",
@@ -499,6 +489,7 @@ namespace Api.Controllers
             }
         }
 
+#if DEBUG
         [HttpPost("seed-test-data")]
         [Authorize(Policy = "AdminOrEmployee")]
         public async Task<IActionResult> SeedTestData()
@@ -634,5 +625,37 @@ namespace Api.Controllers
                 return StatusCode(500, new { success = false, message = "حدث خطأ في الخادم", error = ex.Message });
             }
         }
+
+
+        [HttpPost("update-trainer-names")]
+        [Authorize(Policy = "AdminOrEmployee")]
+        public async Task<IActionResult> UpdateTrainerNames()
+        {
+            try
+            {
+                await Scripts.UpdateTrainerName.UpdateTrainerNames(_context);
+                return Ok(new { success = true, message = "تم تحديث أسماء المدربين بنجاح" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "حدث خطأ في تحديث أسماء المدربين", error = ex.Message });
+            }
+        }
+
+        [HttpGet("test-trainers")]
+        [Authorize(Policy = "AdminOrEmployee")]
+        public async Task<IActionResult> TestTrainers()
+        {
+            try
+            {
+                await Scripts.TestTrainers.TestCurrentTrainers(_context);
+                return Ok(new { success = true, message = "تم اختبار المدربين بنجاح" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "حدث خطأ في اختبار المدربين", error = ex.Message });
+            }
+        }
+#endif
     }
 }

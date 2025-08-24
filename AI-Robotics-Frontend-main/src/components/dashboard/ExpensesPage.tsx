@@ -1,6 +1,9 @@
-import React, { useEffect, useState } from "react";
-import axios from "../../lib/api/axios";
+import React, { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
+import paymentsAPI, {
+  TransactionRow,
+  FinancialSummary,
+} from "../../lib/api/paymentsAPI.ts";
 import {
   Users,
   BookText,
@@ -9,245 +12,441 @@ import {
   MapPin,
   Filter,
   FileDown,
+  Eye,
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  RefreshCw,
+  Search,
 } from "lucide-react";
 
-interface ExpenseRow {
-  id: number;
-  studentName: string;
-  courseName: string;
-  amount: number;
-  paymentStatus: string;
-  paymentDate: string;
-  branch: string;
-  type: string; // وارد أو صادر
-  category?: string;
-  description?: string;
-}
-
 const ExpensesPage: React.FC = () => {
-  const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
+  const [transactions, setTransactions] = useState<TransactionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [branchFilter, setBranchFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "income" | "expense">(
+    "all"
+  );
+  const [courseFilter, setCourseFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [summary, setSummary] = useState({
+    totalIncome: 0,
+    totalExpenses: 0,
+    netBalance: 0,
+  });
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchExpenses();
+    fetchTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFrom, dateTo]);
+
+  // تحديث البيانات كل 30 ثانية
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchTransactions();
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchExpenses = async () => {
+  const fetchTransactions = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const response = await axios.get("/expenses");
-      const data = response.data.data || [];
-      // تحويل البيانات إلى الشكل المطلوب
-      const rows: ExpenseRow[] = data.map((exp: any) => ({
-        id: exp.id,
-        studentName: exp.studentName || "-",
-        courseName: exp.courseName || "-",
-        amount: exp.amount,
-        paymentStatus: exp.statusArabic || exp.status,
-        paymentDate: exp.expenseDate
-          ? new Date(exp.expenseDate).toLocaleDateString("ar-EG")
-          : "-",
-        branch: exp.branchName || "-",
-        type: exp.amount >= 0 ? "وارد" : "صادر", // لو المبلغ موجب اعتبره وارد
-        category: exp.categoryArabic || exp.category || "-",
-        description: exp.description || "-",
-      }));
-      setExpenses(rows);
+      // Try to get transactions from the main endpoint
+      let result = await paymentsAPI.getAllTransactions({
+        startDate: dateFrom || undefined,
+        endDate: dateTo || undefined,
+      });
+
+      // If no data, try alternative endpoint
+      if (result.transactions.length === 0) {
+        console.log(
+          "No transactions from main endpoint, trying alternative..."
+        );
+        result = await paymentsAPI.getAlternativeTransactions();
+      }
+
+      setTransactions(result.transactions);
+      setSummary(result.summary);
+
+      console.log("Processed transactions:", result.transactions);
+      console.log("Summary from API:", result.summary);
     } catch (error) {
-      setExpenses([]);
+      console.error("Error fetching transactions:", error);
+      // Try alternative endpoint as fallback
+      try {
+        console.log("Trying alternative endpoint as fallback...");
+        const result = await paymentsAPI.getAlternativeTransactions();
+        setTransactions(result.transactions);
+        setSummary(result.summary);
+      } catch (altError) {
+        console.error("Alternative endpoint also failed:", altError);
+        setError("خطأ في تحميل البيانات - يرجى المحاولة مرة أخرى");
+        setTransactions([]);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const exportToExcel = () => {
-    if (expenses.length === 0) return;
-    const ws = XLSX.utils.json_to_sheet(expenses);
+    if (filtered.length === 0) return;
+
+    const totalsRow = {
+      "إجمالي الدخل": summary.totalIncome,
+      "إجمالي المصروف": summary.totalExpenses,
+      "صافي الرصيد": summary.netBalance,
+    } as any;
+
+    const rows = filtered.map((t) => ({
+      "اسم الطالب": t.studentName || "-",
+      "اسم الكورس": t.courseName || "-",
+      المبلغ: t.amount,
+      "نوع العملية": t.transactionType === "income" ? "دخل" : "مصروف",
+      "طريقة الدفع": t.paymentMethod || "-",
+      "نوع الدفع": t.paymentType || "-",
+      "تاريخ الدفع": t.paymentDate
+        ? new Date(t.paymentDate).toLocaleDateString("ar-EG")
+        : "-",
+      الفئة: t.category || "-",
+      الوصف: t.description || "-",
+      "حالة الدفع": t.paymentStatus === "paid" ? "مدفوع" : "غير مدفوع",
+      الفرع: t.branchName || "-",
+      "تمت المعالجة بواسطة": t.processedBy || "-",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet([...rows, {}, totalsRow]);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Expenses");
+    XLSX.utils.book_append_sheet(wb, ws, "Transactions");
     XLSX.writeFile(
       wb,
-      `تقرير_المصروفات_${new Date().toLocaleDateString("ar-EG")}.xlsx`
+      `دفتر_المعاملات_${new Date().toLocaleDateString("ar-EG")}.xlsx`
     );
   };
 
-  // فلترة حسب الفرع وحالة الدفع
-  const filteredExpenses = expenses.filter(
-    (row) =>
-      (branchFilter === "all" || row.branch === branchFilter) &&
-      (statusFilter === "all" || row.paymentStatus === statusFilter)
-  );
+  const openInvoice = (invoiceUrl: string) => {
+    window.open(invoiceUrl, "_blank");
+  };
+
+  // الفلاتر والحسابات
+  const filtered = useMemo(() => {
+    return transactions.filter((t) => {
+      const matchesBranch =
+        branchFilter === "all" || t.branchName === branchFilter;
+      const matchesType =
+        typeFilter === "all" ||
+        (typeFilter === "income" && t.transactionType === "income") ||
+        (typeFilter === "expense" && t.transactionType === "expense");
+      const matchesCourse =
+        !courseFilter ||
+        (t.courseName || "").toLowerCase().includes(courseFilter.toLowerCase());
+      const matchesDateFrom =
+        !dateFrom || new Date(t.paymentDate) >= new Date(dateFrom);
+      const matchesDateTo =
+        !dateTo || new Date(t.paymentDate) <= new Date(dateTo);
+      return (
+        matchesBranch &&
+        matchesType &&
+        matchesCourse &&
+        matchesDateFrom &&
+        matchesDateTo
+      );
+    });
+  }, [transactions, branchFilter, typeFilter, courseFilter, dateFrom, dateTo]);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto rtl">
-      <div className="bg-gradient-to-br from-secondary-900 to-secondary-800 rounded-3xl p-8 shadow-2xl border border-primary-500/20">
-        <div className="flex items-center mb-6 gap-3">
-          <DollarSign className="w-8 h-8 text-yellow-500" />
-          <h1 className="text-3xl font-bold text-white">صفحة المصروفات</h1>
+    <div className="p-6 max-w-7xl mx-auto rtl">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          دفتر المعاملات المالية
+        </h1>
+        <p className="text-gray-600">
+          عرض وإدارة جميع المعاملات المالية في النظام
+        </p>
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          {error}
+        </div>
+      )}
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-gray-600 mb-1">إجمالي الدخل</div>
+              <div className="text-3xl font-bold text-green-600">
+                {summary.totalIncome.toLocaleString()} جنيه
+              </div>
+            </div>
+            <div className="p-3 bg-green-100 rounded-full">
+              <TrendingUp className="w-8 h-8 text-green-600" />
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
-          <div className="flex gap-2 w-full md:w-auto">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-gray-600 mb-1">إجمالي المصروف</div>
+              <div className="text-3xl font-bold text-red-600">
+                {summary.totalExpenses.toLocaleString()} جنيه
+              </div>
+            </div>
+            <div className="p-3 bg-red-100 rounded-full">
+              <TrendingDown className="w-8 h-8 text-red-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-gray-600 mb-1">صافي الرصيد</div>
+              <div
+                className={`text-3xl font-bold ${
+                  summary.netBalance >= 0 ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {summary.netBalance.toLocaleString()} جنيه
+              </div>
+            </div>
+            <div
+              className={`p-3 rounded-full ${
+                summary.netBalance >= 0 ? "bg-green-100" : "bg-red-100"
+              }`}
+            >
+              <DollarSign
+                className={`w-8 h-8 ${
+                  summary.netBalance >= 0 ? "text-green-600" : "text-red-600"
+                }`}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters and Actions */}
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 mb-6">
+        <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+          <div className="flex flex-col sm:flex-row gap-3 items-center w-full lg:w-auto">
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="البحث في الكورسات..."
+                value={courseFilter}
+                onChange={(e) => setCourseFilter(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full sm:w-64"
+              />
+            </div>
+
             <select
               value={branchFilter}
               onChange={(e) => setBranchFilter(e.target.value)}
-              className="px-4 py-2 border border-primary-500/30 rounded-lg bg-secondary-800/50 text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">كل الفروع</option>
               <option value="أسيوط">أسيوط</option>
               <option value="أبوتيج">أبوتيج</option>
             </select>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-primary-500/30 rounded-lg bg-secondary-800/50 text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="all">كل الحالات</option>
-              <option value="مدفوع">مدفوع</option>
-              <option value="غير مدفوع">غير مدفوع</option>
-              <option value="جزئي">جزئي</option>
-            </select>
-          </div>
-          <button
-            onClick={exportToExcel}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-300 shadow-lg hover:shadow-xl"
-          >
-            <FileDown className="w-5 h-5" />
-            <span>تصدير إكسل</span>
-          </button>
-        </div>
 
-        <div className="overflow-x-auto bg-secondary-800/30 backdrop-blur-sm rounded-2xl border border-primary-500/20">
-          <table className="min-w-full">
-            <thead className="bg-secondary-700/50">
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as any)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">الكل</option>
+              <option value="income">دخل فقط</option>
+              <option value="expense">مصروف فقط</option>
+            </select>
+
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={fetchTransactions}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+              />
+              <span>{loading ? "جاري التحديث..." : "تحديث"}</span>
+            </button>
+
+            <button
+              onClick={exportToExcel}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <FileDown className="w-4 h-4" />
+              <span>تصدير إكسل</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Transactions Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-primary-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-blue-400" />
+                    <Users className="w-4 h-4 text-gray-400" />
                     اسم الطالب
                   </div>
                 </th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-primary-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
-                    <BookText className="w-4 h-4 text-green-400" />
+                    <BookText className="w-4 h-4 text-gray-400" />
                     الكورس
                   </div>
                 </th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-primary-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-yellow-400" />
+                    <DollarSign className="w-4 h-4 text-gray-400" />
                     المبلغ
                   </div>
                 </th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-primary-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   نوع العملية
                 </th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-primary-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  طريقة الدفع
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   الفئة
                 </th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-primary-300 uppercase tracking-wider">
-                  الوصف
-                </th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-primary-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   حالة الدفع
                 </th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-primary-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-purple-400" />
+                    <Calendar className="w-4 h-4 text-gray-400" />
                     تاريخ الدفع
                   </div>
                 </th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-primary-300 uppercase tracking-wider">
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-pink-400" />
+                    <MapPin className="w-4 h-4 text-gray-400" />
                     الفرع
                   </div>
                 </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  الفاتورة
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-primary-500/20">
+            <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
                   <td
-                    colSpan={9}
-                    className="text-center py-12 text-lg text-primary-300"
+                    colSpan={10}
+                    className="text-center py-12 text-lg text-gray-500"
                   >
                     <div className="flex items-center justify-center gap-2">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-400"></div>
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                       جاري التحميل...
                     </div>
                   </td>
                 </tr>
-              ) : filteredExpenses.length === 0 ? (
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={9}
-                    className="text-center py-16 text-xl text-primary-300 font-bold"
+                    colSpan={10}
+                    className="text-center py-16 text-xl text-gray-500"
                   >
                     <div className="flex flex-col items-center gap-4">
-                      <DollarSign className="w-16 h-16 text-primary-400/50" />
-                      <span>لا توجد بيانات مصروفات بعد</span>
-                      <span className="text-3xl">🪙</span>
+                      <Wallet className="w-16 h-16 text-gray-300" />
+                      <span>لا توجد معاملات مالية بعد</span>
+                      <span className="text-3xl">💰</span>
                     </div>
                   </td>
                 </tr>
               ) : (
-                filteredExpenses.map((row) => (
+                filtered.map((row) => (
                   <tr
                     key={row.id}
-                    className={`hover:bg-secondary-700/30 transition-all duration-200 ${
-                      row.type === "وارد"
-                        ? "bg-green-500/10 border-r-4 border-green-500"
-                        : "bg-red-500/10 border-r-4 border-red-500"
+                    className={`hover:bg-gray-50 transition-colors ${
+                      row.transactionType === "income"
+                        ? "border-r-4 border-green-500"
+                        : "border-r-4 border-red-500"
                     }`}
                   >
-                    <td className="px-6 py-4 font-medium text-white">
-                      {row.studentName}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {row.studentName || "-"}
                     </td>
-                    <td className="px-6 py-4 text-primary-200">
-                      {row.courseName}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {row.courseName || "-"}
                     </td>
-                    <td className="px-6 py-4 font-bold text-yellow-400">
-                      {row.amount} جنيه
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                      {row.amount.toLocaleString()} جنيه
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          row.type === "وارد"
-                            ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                            : "bg-red-500/20 text-red-400 border border-red-500/30"
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          row.transactionType === "income"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
                         }`}
                       >
-                        {row.type}
+                        {row.transactionType === "income" ? "دخل" : "مصروف"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-primary-200">
-                      {row.category}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {row.paymentMethod || "-"}
                     </td>
-                    <td className="px-6 py-4 text-primary-200">
-                      {row.description}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {row.paymentType || row.category || "-"}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          row.paymentStatus === "مدفوع"
-                            ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                            : row.paymentStatus === "غير مدفوع"
-                            ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                            : row.paymentStatus === "جزئي"
-                            ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-                            : "bg-gray-500/20 text-gray-400 border border-gray-500/30"
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          row.paymentStatus === "paid"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-yellow-100 text-yellow-800"
                         }`}
                       >
-                        {row.paymentStatus}
+                        {row.paymentStatus === "paid" ? "مدفوع" : "غير مدفوع"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-primary-200">
-                      {row.paymentDate}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(row.paymentDate).toLocaleDateString("ar-EG")}
                     </td>
-                    <td className="px-6 py-4 text-primary-200">{row.branch}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {row.branchName || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <button
+                        onClick={() => openInvoice(row.invoiceUrl)}
+                        className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200 transition-colors"
+                      >
+                        <Eye className="w-3 h-3" />
+                        عرض الفاتورة
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}

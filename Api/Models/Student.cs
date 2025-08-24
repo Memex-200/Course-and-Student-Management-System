@@ -17,6 +17,10 @@ namespace Api.Models
 
         public DateTime DateOfBirth { get; set; } // تاريخ الميلاد
 
+        public AgeGroup AgeGroup { get; set; } // الفئة العمرية
+
+        public StudentLevel Level { get; set; } // المستوى
+
         [MaxLength(20)]
         public string Phone { get; set; } = string.Empty; // رقم الهاتف
 
@@ -29,18 +33,13 @@ namespace Api.Models
         [MaxLength(100)]
         public string School { get; set; } = string.Empty; // المدرسة
         
-        [MaxLength(50)]
-        public string Grade { get; set; } = string.Empty; // الصف الدراسي
-        
         [Required]
         [MaxLength(20)]
         public string ParentPhone { get; set; } = string.Empty; // رقم ولي الأمر
         
+        [Required]
         [MaxLength(100)]
         public string ParentName { get; set; } = string.Empty; // اسم ولي الأمر
-
-        [MaxLength(100)]
-        public string ParentEmail { get; set; } = string.Empty; // بريد ولي الأمر
 
         [MaxLength(100)]
         public string EmergencyContact { get; set; } = string.Empty; // جهة الاتصال الطارئة
@@ -50,16 +49,10 @@ namespace Api.Models
 
         [MaxLength(500)]
         public string MedicalConditions { get; set; } = string.Empty; // الحالات الطبية
-
-        [MaxLength(100)]
-        public string PreferredTransportation { get; set; } = string.Empty; // وسيلة المواصلات المفضلة
         
         public bool AcceptsDomesticTravel { get; set; } // يقبل السفر داخل مصر
         
         public bool AcceptsInternationalTravel { get; set; } // يقبل السفر خارج مصر
-        
-        [MaxLength(200)]
-        public string Address { get; set; } = string.Empty; // العنوان
         
         public int BranchId { get; set; } // الفرع
         
@@ -79,5 +72,6 @@ namespace Api.Models
         public virtual ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
         public virtual ICollection<WorkspaceBooking> WorkspaceBookings { get; set; } = new List<WorkspaceBooking>();
         public virtual ICollection<CafeteriaOrder> CafeteriaOrders { get; set; } = new List<CafeteriaOrder>();
+        public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
     }
 }

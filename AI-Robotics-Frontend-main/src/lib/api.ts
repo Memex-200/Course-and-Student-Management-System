@@ -158,9 +158,9 @@ export const studentsAPI = {
 
   registerForCourse: (id: number, courseData: any) =>
     api.post(`/students/${id}/register-course`, courseData),
-    
+
   getBranches: () => api.get("/courses/test-data"),
-  
+
   // Get student's own dashboard (enrolled courses)
   getMyDashboard: () => api.get("/students/my-dashboard"),
 };
@@ -181,7 +181,7 @@ export const coursesAPI = {
   delete: (id: number) => api.delete(`/courses/${id}`),
 
   getCategories: () => api.get("/courses/categories"),
-  
+
   // Get available courses for student registration
   getAvailable: () => api.get("/courses/available"),
 };
@@ -260,8 +260,11 @@ export const cafeteriaAPI = {
   deleteItem: (id: number) => api.delete(`/cafeteria/items/${id}`),
 
   // Orders Management
-  getOrders: (params?: { status?: string; startDate?: string; endDate?: string }) =>
-    api.get("/cafeteria/orders", { params }),
+  getOrders: (params?: {
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => api.get("/cafeteria/orders", { params }),
 
   getOrder: (id: number) => api.get(`/cafeteria/orders/${id}`),
 
@@ -283,14 +286,17 @@ export const cafeteriaAPI = {
     }>;
   }) => api.post("/cafeteria/orders", data),
 
-  updateOrder: (id: number, data: {
-    customerName?: string;
-    customerPhone?: string;
-    discountAmount?: number;
-    paidAmount?: number;
-    paymentMethod?: number;
-    notes?: string;
-  }) => api.put(`/cafeteria/orders/${id}`, data),
+  updateOrder: (
+    id: number,
+    data: {
+      customerName?: string;
+      customerPhone?: string;
+      discountAmount?: number;
+      paidAmount?: number;
+      paymentMethod?: number;
+      notes?: string;
+    }
+  ) => api.put(`/cafeteria/orders/${id}`, data),
 
   updateOrderStatus: (id: number, data: { status: number; notes?: string }) =>
     api.put(`/cafeteria/orders/${id}/status`, data),
@@ -305,20 +311,22 @@ export const cafeteriaAPI = {
   getQuickStats: () => api.get("/cafeteria/quick-stats"),
 
   // Payment Management
-  processPayment: (orderId: number, data: { amount: number; paymentMethod: number; notes?: string }) =>
-    api.post(`/cafeteria/orders/${orderId}/payment`, data),
+  processPayment: (
+    orderId: number,
+    data: { amount: number; paymentMethod: number; notes?: string }
+  ) => api.post(`/cafeteria/orders/${orderId}/payment`, data),
 
   // Export Reports
   exportToExcel: (params?: { startDate?: string; endDate?: string }) =>
-    api.get("/cafeteria/export/excel", { 
+    api.get("/cafeteria/export/excel", {
       params,
-      responseType: 'blob'
+      responseType: "blob",
     }),
 
   exportToPDF: (params?: { startDate?: string; endDate?: string }) =>
-    api.get("/cafeteria/export/pdf", { 
+    api.get("/cafeteria/export/pdf", {
       params,
-      responseType: 'blob'
+      responseType: "blob",
     }),
 };
 
@@ -368,7 +376,8 @@ export const reportsAPI = {
 };
 
 export const attendanceAPI = {
-  getCourseAttendance: (courseId: number) => api.get(`/attendance/courses/${courseId}`),
+  getCourseAttendance: (courseId: number) =>
+    api.get(`/attendance/courses/${courseId}`),
 
   getStudentAttendance: (studentId: number) =>
     api.get(`/attendance/student/${studentId}`),
@@ -378,9 +387,11 @@ export const attendanceAPI = {
   updateAttendance: (id: number, data: any) =>
     api.put(`/attendance/${id}`, data),
 
-  updateAttendanceSession: (courseId: number, body: any) => api.put(`/attendance/courses/${courseId}/session`, body),
+  updateAttendanceSession: (courseId: number, body: any) =>
+    api.put(`/attendance/courses/${courseId}/session`, body),
 
-  createAttendanceSession: (courseId: number, body: any) => api.post(`/attendance/courses/${courseId}/session`, body),
+  createAttendanceSession: (courseId: number, body: any) =>
+    api.post(`/attendance/courses/${courseId}/session`, body),
 
   getCourseSessions: (courseId: number) =>
     api.get(`/attendance/sessions/${courseId}`),

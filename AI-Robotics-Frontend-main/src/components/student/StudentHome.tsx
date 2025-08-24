@@ -1,18 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import {
-  Book,
-  Award,
-  Calendar,
-  User,
-  BookOpen,
-  ArrowRight,
-  Zap,
-  Bot,
-  Brain,
-  CircuitBoard,
-} from "lucide-react";
+import { Award, Calendar, User, ArrowRight, Bot, Brain } from "lucide-react";
 
 const StudentHome: React.FC = () => {
   const { user } = useAuth();
@@ -79,7 +68,7 @@ const StudentHome: React.FC = () => {
                   {enrolledCourses.length}
                 </h3>
               </div>
-              <Book className="w-12 h-12 text-primary-400" />
+              <User className="w-12 h-12 text-primary-400" />
             </div>
           </div>
 

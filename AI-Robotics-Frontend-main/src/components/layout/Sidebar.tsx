@@ -14,6 +14,7 @@ import {
   Coffee,
   User,
   DollarSign,
+  BookOpen,
 } from "lucide-react";
 import { UserRole } from "../../types";
 
@@ -30,6 +31,7 @@ const Sidebar: React.FC = () => {
     { path: "/students", icon: Users, label: "الطلاب" },
     { path: "/courses", icon: GraduationCap, label: "الكورسات" },
     { path: "/attendance", icon: User, label: "الحضور" },
+    { path: "/grades", icon: BookOpen, label: "إدارة الدرجات" },
     { path: "/expenses", icon: Wallet, label: "المصروفات" },
     { path: "/payments", icon: DollarSign, label: "إدارة المدفوعات" },
     { path: "/cafeteria", icon: Coffee, label: "الكافيتريا" },
@@ -45,6 +47,7 @@ const Sidebar: React.FC = () => {
       icon: Brain,
       label: "الكورسات المتاحة",
     },
+    { path: "/student/grades", icon: BookOpen, label: "درجاتي" },
     { path: "/student/certificates", icon: Award, label: "الشهادات" },
   ];
 

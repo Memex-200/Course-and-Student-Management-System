@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import { authAPI } from "../../lib/api";
 
 const StudentAccount: React.FC = () => {
-  const { user, setUser, login } = useAuth();
+  const { user, setUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     fullName: user?.fullName || "",

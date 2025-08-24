@@ -3,6 +3,7 @@ using System;
 using Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250815153744_UpdateStudentRegistrationAndPayments")]
+    partial class UpdateStudentRegistrationAndPayments
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -116,7 +119,7 @@ namespace Api.Migrations
                         {
                             Id = 1,
                             Address = "أسيوط، مصر",
-                            CreatedAt = new DateTime(2025, 8, 15, 20, 51, 8, 128, DateTimeKind.Utc).AddTicks(8190),
+                            CreatedAt = new DateTime(2025, 8, 15, 15, 37, 40, 277, DateTimeKind.Utc).AddTicks(8491),
                             HasRooms = false,
                             HasSharedWorkspace = false,
                             HasWorkspace = true,
@@ -128,7 +131,7 @@ namespace Api.Migrations
                         {
                             Id = 2,
                             Address = "أبو تيج، أسيوط، مصر",
-                            CreatedAt = new DateTime(2025, 8, 15, 20, 51, 8, 128, DateTimeKind.Utc).AddTicks(8212),
+                            CreatedAt = new DateTime(2025, 8, 15, 15, 37, 40, 277, DateTimeKind.Utc).AddTicks(8502),
                             HasRooms = false,
                             HasSharedWorkspace = false,
                             HasWorkspace = false,
@@ -536,7 +539,7 @@ namespace Api.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2025, 8, 15, 20, 51, 8, 128, DateTimeKind.Utc).AddTicks(9312),
+                            CreatedAt = new DateTime(2025, 8, 15, 15, 37, 40, 277, DateTimeKind.Utc).AddTicks(8810),
                             Description = "للأطفال من 4-6 سنوات",
                             IsActive = true,
                             MaxAge = 6,
@@ -546,7 +549,7 @@ namespace Api.Migrations
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2025, 8, 15, 20, 51, 8, 128, DateTimeKind.Utc).AddTicks(9318),
+                            CreatedAt = new DateTime(2025, 8, 15, 15, 37, 40, 277, DateTimeKind.Utc).AddTicks(8815),
                             Description = "أساسيات الروبوتيكس والذكاء الاصطناعي، الكمبيوتر والبرمجة، الهندسة الكهربية والميكاترونكس",
                             IsActive = true,
                             MaxAge = 12,
@@ -556,7 +559,7 @@ namespace Api.Migrations
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2025, 8, 15, 20, 51, 8, 128, DateTimeKind.Utc).AddTicks(9320),
+                            CreatedAt = new DateTime(2025, 8, 15, 15, 37, 40, 277, DateTimeKind.Utc).AddTicks(8816),
                             Description = "أساسيات الروبوتيكس والذكاء الاصطناعي، البرمجة بـ Python و C++، الهندسة الكهربية والميكاترونكس",
                             IsActive = true,
                             MaxAge = 17,
@@ -566,7 +569,7 @@ namespace Api.Migrations
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTime(2025, 8, 15, 20, 51, 8, 128, DateTimeKind.Utc).AddTicks(9322),
+                            CreatedAt = new DateTime(2025, 8, 15, 15, 37, 40, 277, DateTimeKind.Utc).AddTicks(8818),
                             Description = "تطوير المواقع، تطبيقات الهواتف، تطبيقات سطح المكتب، تحليل البيانات، الروبوتات، الميكاترونيكس",
                             IsActive = true,
                             MaxAge = 100,
@@ -1065,9 +1068,6 @@ namespace Api.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int?>("BranchId")
-                        .HasColumnType("int");
-
                     b.Property<int?>("CourseRegistrationId")
                         .HasColumnType("int");
 
@@ -1112,8 +1112,6 @@ namespace Api.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
 
                     b.HasIndex("CourseRegistrationId");
 
@@ -1192,7 +1190,7 @@ namespace Api.Migrations
                             Id = 1,
                             BranchId = 1,
                             Capacity = 20,
-                            CreatedAt = new DateTime(2025, 8, 15, 20, 51, 8, 128, DateTimeKind.Utc).AddTicks(9392),
+                            CreatedAt = new DateTime(2025, 8, 15, 15, 37, 40, 277, DateTimeKind.Utc).AddTicks(8858),
                             Description = "قاعة مخصصة لكورسات الروبوتيكس والذكاء الاصطناعي",
                             Equipment = "أجهزة كمبيوتر، مجموعات روبوتيكس، شاشة عرض",
                             IsActive = true,
@@ -1207,7 +1205,7 @@ namespace Api.Migrations
                             Id = 2,
                             BranchId = 1,
                             Capacity = 25,
-                            CreatedAt = new DateTime(2025, 8, 15, 20, 51, 8, 128, DateTimeKind.Utc).AddTicks(9406),
+                            CreatedAt = new DateTime(2025, 8, 15, 15, 37, 40, 277, DateTimeKind.Utc).AddTicks(8864),
                             Description = "قاعة مخصصة لكورسات البرمجة وتطوير التطبيقات",
                             Equipment = "أجهزة كمبيوتر، شاشة عرض، سبورة ذكية",
                             IsActive = true,
@@ -1222,7 +1220,7 @@ namespace Api.Migrations
                             Id = 3,
                             BranchId = 1,
                             Capacity = 15,
-                            CreatedAt = new DateTime(2025, 8, 15, 20, 51, 8, 128, DateTimeKind.Utc).AddTicks(9410),
+                            CreatedAt = new DateTime(2025, 8, 15, 15, 37, 40, 277, DateTimeKind.Utc).AddTicks(8867),
                             Description = "ورشة مخصصة للأعمال العملية والمشاريع",
                             Equipment = "طاولات عمل، أدوات هندسية، معدات إلكترونية",
                             IsActive = true,
@@ -1398,7 +1396,7 @@ namespace Api.Migrations
                         {
                             Id = 1,
                             BranchId = 1,
-                            CreatedAt = new DateTime(2025, 8, 15, 20, 51, 8, 128, DateTimeKind.Utc).AddTicks(9471),
+                            CreatedAt = new DateTime(2025, 8, 15, 15, 37, 40, 277, DateTimeKind.Utc).AddTicks(8895),
                             CurrentOccupancy = 0,
                             Description = "مساحة مفتوحة للدراسة والعمل الجماعي",
                             Equipment = "واي فاي، طابعة، سبورة، طاولات دراسة",
@@ -1416,7 +1414,7 @@ namespace Api.Migrations
                         {
                             Id = 2,
                             BranchId = 1,
-                            CreatedAt = new DateTime(2025, 8, 15, 20, 51, 8, 128, DateTimeKind.Utc).AddTicks(9489),
+                            CreatedAt = new DateTime(2025, 8, 15, 15, 37, 40, 277, DateTimeKind.Utc).AddTicks(8904),
                             CurrentOccupancy = 0,
                             Description = "مساحة هادئة للدراسة الفردية والجماعية",
                             Equipment = "واي فاي، بروجكتر، سبورة، طاولات دراسة",
@@ -1599,6 +1597,11 @@ namespace Api.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("varchar(10)");
 
+                    b.Property<string>("Grade")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("tinyint(1)");
 
@@ -1768,7 +1771,7 @@ namespace Api.Migrations
                             Id = 1,
                             Address = "",
                             BranchId = 1,
-                            CreatedAt = new DateTime(2025, 8, 15, 20, 51, 8, 128, DateTimeKind.Utc).AddTicks(9135),
+                            CreatedAt = new DateTime(2025, 8, 15, 15, 37, 40, 277, DateTimeKind.Utc).AddTicks(8780),
                             Email = "test@example.com",
                             FullName = "Test User",
                             IsActive = true,
@@ -2455,11 +2458,6 @@ namespace Api.Migrations
 
             modelBuilder.Entity("Api.Models.Payment", b =>
                 {
-                    b.HasOne("Api.Models.Branch", "Branch")
-                        .WithMany()
-                        .HasForeignKey("BranchId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("Api.Models.CourseRegistration", "CourseRegistration")
                         .WithMany("Payments")
                         .HasForeignKey("CourseRegistrationId")
@@ -2484,8 +2482,6 @@ namespace Api.Migrations
                         .WithMany()
                         .HasForeignKey("WorkspaceBookingId")
                         .OnDelete(DeleteBehavior.NoAction);
-
-                    b.Navigation("Branch");
 
                     b.Navigation("CourseRegistration");
 
