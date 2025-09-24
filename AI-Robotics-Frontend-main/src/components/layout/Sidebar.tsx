@@ -42,11 +42,6 @@ const Sidebar: React.FC = () => {
     { path: "/student", icon: LayoutDashboard, label: "الرئيسية" },
     { path: "/student/account", icon: User, label: "حسابي" },
     { path: "/student/courses", icon: Bot, label: "كورساتي" },
-    {
-      path: "/student/available-courses",
-      icon: Brain,
-      label: "الكورسات المتاحة",
-    },
     { path: "/student/grades", icon: BookOpen, label: "درجاتي" },
     { path: "/student/certificates", icon: Award, label: "الشهادات" },
   ];

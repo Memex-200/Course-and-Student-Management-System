@@ -4,6 +4,7 @@ import paymentsAPI, {
   TransactionRow,
   FinancialSummary,
 } from "../../lib/api/paymentsAPI.ts";
+import axios from "../../lib/api/axios";
 import {
   Users,
   BookText,
@@ -36,6 +37,7 @@ const ExpensesPage: React.FC = () => {
     netBalance: 0,
   });
   const [error, setError] = useState<string | null>(null);
+  const [loadingInvoice, setLoadingInvoice] = useState<number | null>(null);
 
   useEffect(() => {
     fetchTransactions();
@@ -127,8 +129,39 @@ const ExpensesPage: React.FC = () => {
     );
   };
 
-  const openInvoice = (invoiceUrl: string) => {
-    window.open(invoiceUrl, "_blank");
+  const openInvoice = async (invoiceUrl: string, transactionId: number) => {
+    setLoadingInvoice(transactionId);
+    try {
+      // Make the request with authentication
+      const response = await axios.get(invoiceUrl, {
+        responseType: "blob", // Important for PDF files
+      });
+
+      // Create a blob URL and open it
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, "_blank");
+
+      // Clean up the URL after a delay
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 1000);
+    } catch (error: any) {
+      console.error("Error opening invoice:", error);
+      let errorMessage = "خطأ في فتح الفاتورة. يرجى المحاولة مرة أخرى.";
+
+      if (error.response?.status === 404) {
+        errorMessage = "الفاتورة غير موجودة.";
+      } else if (error.response?.status === 401) {
+        errorMessage = "غير مصرح لك بعرض هذه الفاتورة.";
+      } else if (error.response?.status === 500) {
+        errorMessage = "خطأ في الخادم. يرجى المحاولة مرة أخرى.";
+      }
+
+      alert(errorMessage);
+    } finally {
+      setLoadingInvoice(null);
+    }
   };
 
   // الفلاتر والحسابات
@@ -139,7 +172,7 @@ const ExpensesPage: React.FC = () => {
       const matchesType =
         typeFilter === "all" ||
         (typeFilter === "income" && t.transactionType === "income") ||
-        (typeFilter === "expense" && t.transactionType === "expense");
+        (typeFilter === "expense" && t.transactionType === "expenses");
       const matchesCourse =
         !courseFilter ||
         (t.courseName || "").toLowerCase().includes(courseFilter.toLowerCase());
@@ -440,11 +473,18 @@ const ExpensesPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <button
-                        onClick={() => openInvoice(row.invoiceUrl)}
-                        className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200 transition-colors"
+                        onClick={() => openInvoice(row.invoiceUrl, row.id)}
+                        disabled={loadingInvoice === row.id}
+                        className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <Eye className="w-3 h-3" />
-                        عرض الفاتورة
+                        {loadingInvoice === row.id ? (
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700"></div>
+                        ) : (
+                          <Eye className="w-3 h-3" />
+                        )}
+                        {loadingInvoice === row.id
+                          ? "جاري التحميل..."
+                          : "عرض الفاتورة"}
                       </button>
                     </td>
                   </tr>

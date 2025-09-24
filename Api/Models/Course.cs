@@ -47,6 +47,9 @@ namespace Api.Models
         [MaxLength(100)]
         public string Schedule { get; set; } = string.Empty; // الجدول الزمني المعروض
 
+        [MaxLength(500)]
+        public string? DriveLink { get; set; } = string.Empty; // رابط المواد على الدرايف
+
         [MaxLength(4000)]
         public string Content { get; set; } = string.Empty; // محتوى الكورس
 

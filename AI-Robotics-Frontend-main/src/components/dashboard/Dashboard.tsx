@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import DashboardStats from "./DashboardStats";
 import { reportsAPI } from "../../lib/api";
-import { DashboardStats as Stats } from "../../types";
-import { UserRole } from "../../types";
+import { DashboardStats as Stats, UserRole } from "../../types";
 import CafeteriaDashboard from "../cafeteria/CafeteriaDashboard";
 import {
   Calendar,
@@ -46,45 +45,19 @@ const Dashboard: React.FC = () => {
       setStats(response.data.data);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
-      // Mock data for demo
-      setStats({
-        totalStudents: 234,
-        totalCourses: 15,
-        activeCourses: 12,
-        totalRevenue: 125000,
-        monthlyRevenue: 24500,
-        activeWorkspaceBookings: 8,
-        pendingPayments: 3,
-        upcomingClasses: 7,
-      });
+      // لا تعرض بيانات وهمية عند فشل الجلب
+      setStats(null);
     } finally {
       setLoading(false);
     }
   };
 
   // Mock chart data
-  const revenueData = [
-    { name: "يناير", revenue: 18500, courses: 145, workspace: 4200 },
-    { name: "فبراير", revenue: 22300, courses: 167, workspace: 5100 },
-    { name: "مارس", revenue: 19800, courses: 134, workspace: 3800 },
-    { name: "أبريل", revenue: 26100, courses: 189, workspace: 6300 },
-    { name: "مايو", revenue: 23700, courses: 156, workspace: 5400 },
-    { name: "يونيو", revenue: 24500, courses: 167, workspace: 5800 },
-  ];
+  const revenueData: Array<any> = [];
 
-  const courseCategoryData = [
-    { name: "الروبوتات", value: 35, color: "#3B82F6" },
-    { name: "البرمجة", value: 30, color: "#10B981" },
-    { name: "الذكاء الاصطناعي", value: 20, color: "#8B5CF6" },
-    { name: "الميكاترونيكس", value: 15, color: "#F59E0B" },
-  ];
+  const courseCategoryData: Array<any> = [];
 
-  const studentProgressData = [
-    { name: "الأسبوع 1", completed: 23, inProgress: 45, new: 12 },
-    { name: "الأسبوع 2", completed: 28, inProgress: 42, new: 18 },
-    { name: "الأسبوع 3", completed: 31, inProgress: 38, new: 15 },
-    { name: "الأسبوع 4", completed: 35, inProgress: 41, new: 22 },
-  ];
+  const studentProgressData: Array<any> = [];
 
   const getWelcomeMessage = () => {
     const hour = new Date().getHours();
@@ -217,38 +190,40 @@ const Dashboard: React.FC = () => {
         </Link>
       </div>
 
-      {/* Revenue Chart */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">
-          اتجاه الإيرادات الشهرية
-        </h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={revenueData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Line
-              type="monotone"
-              dataKey="revenue"
-              stroke="#8884d8"
-              strokeWidth={2}
-            />
-            <Line
-              type="monotone"
-              dataKey="courses"
-              stroke="#82ca9d"
-              strokeWidth={2}
-            />
-            <Line
-              type="monotone"
-              dataKey="workspace"
-              stroke="#ffc658"
-              strokeWidth={2}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      {/* Revenue Chart - hidden until real data is available */}
+      {revenueData.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm p-6 border">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">
+            اتجاه الإيرادات الشهرية
+          </h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={revenueData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="#8884d8"
+                strokeWidth={2}
+              />
+              <Line
+                type="monotone"
+                dataKey="courses"
+                stroke="#82ca9d"
+                strokeWidth={2}
+              />
+              <Line
+                type="monotone"
+                dataKey="workspace"
+                stroke="#ffc658"
+                strokeWidth={2}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Cafeteria Dashboard */}
       <CafeteriaDashboard />

@@ -104,6 +104,7 @@ namespace Api.Controllers
                         LabName = c.Lab != null && c.Lab.Name != null ? c.Lab.Name : string.Empty,
                         RoomId = c.RoomId,
                         RoomName = c.Room != null && c.Room.Name != null ? c.Room.Name : string.Empty,
+                        DriveLink = c.DriveLink,
                         Schedule = c.Schedule ?? string.Empty,
                         Content = c.Content ?? string.Empty,
                         Prerequisites = c.Prerequisites ?? string.Empty,
@@ -225,6 +226,7 @@ namespace Api.Controllers
                     LabName = course.Lab != null ? course.Lab.Name : string.Empty,
                     RoomId = course.RoomId,
                     RoomName = course.Room != null ? course.Room.Name : string.Empty,
+                    DriveLink = course.DriveLink,
                     Schedule = course.Schedule,
                     Content = course.Content,
                     Prerequisites = course.Prerequisites,
@@ -353,6 +355,7 @@ namespace Api.Controllers
                     StartTime = request.StartTime,
                     EndTime = request.EndTime,
                     Notes = request.Notes,
+                    DriveLink = request.DriveLink,
                     Status = CourseStatus.Planned,
                     CreatedAt = DateTime.UtcNow,
                     IsActive = true
@@ -406,6 +409,7 @@ namespace Api.Controllers
                 if (request.StartTime != null) course.StartTime = request.StartTime;
                 if (request.EndTime != null) course.EndTime = request.EndTime;
                 if (request.Notes != null) course.Notes = request.Notes;
+                if (request.DriveLink != null) course.DriveLink = request.DriveLink;
                 if (request.IsActive.HasValue) course.IsActive = request.IsActive.Value;
 
                 // Update schedule string if any schedule-related field is updated

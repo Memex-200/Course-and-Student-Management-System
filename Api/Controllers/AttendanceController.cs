@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text;
 using Api.Services;
-using BCrypt.Net;
+using BCryptNet = BCrypt.Net.BCrypt;
 
 namespace Api.Controllers
 {
@@ -227,7 +227,7 @@ namespace Api.Controllers
                             // توليد اسم مستخدم وكلمة مرور عشوائية
                             var username = _passwordGenerator.GenerateUsername(student.FullName);
                             var password = _passwordGenerator.GenerateRandomPassword();
-                            var passwordHash = BCrypt.HashPassword(password); // Use BCrypt for consistency and security
+                            var passwordHash = BCryptNet.HashPassword(password); // Use BCrypt for consistency and security
                             var email = string.IsNullOrWhiteSpace(student.Email) ? $"student{student.Id}@company.com" : student.Email;
 
                             var newUser = new User

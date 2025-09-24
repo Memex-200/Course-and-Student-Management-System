@@ -46,6 +46,7 @@ export interface CourseFormData {
   courseDays?: string;
   startTime?: string;
   endTime?: string;
+  driveLink?: string;
   scheduleDetails: {
     days: (
       | "Sunday"

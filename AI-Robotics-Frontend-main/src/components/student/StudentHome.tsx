@@ -6,40 +6,22 @@ import { Award, Calendar, User, ArrowRight, Bot, Brain } from "lucide-react";
 const StudentHome: React.FC = () => {
   const { user } = useAuth();
 
-  // Mock data (will be replaced with API calls)
-  const enrolledCourses = [
-    {
-      id: 1,
-      name: "مقدمة في الروبوتات",
-      progress: 60,
-      nextClass: "2024-03-20 14:00:00",
-    },
-    {
-      id: 2,
-      name: "البرمجة بلغة Python",
-      progress: 35,
-      nextClass: "2024-03-21 16:00:00",
-    },
-  ];
+  // لا بيانات وهمية هنا؛ سيتم جلبها من صفحات متخصصة
+  const enrolledCourses: Array<{
+    id: number;
+    name: string;
+    progress: number;
+    nextClass: string;
+  }> = [];
 
-  const availableCourses = [
-    {
-      id: 3,
-      name: "الذكاء الاصطناعي للمبتدئين",
-      startDate: "2024-04-01",
-      price: 2500,
-    },
-    {
-      id: 4,
-      name: "تطوير تطبيقات الروبوت",
-      startDate: "2024-04-15",
-      price: 3000,
-    },
-  ];
+  const availableCourses: Array<{
+    id: number;
+    name: string;
+    startDate: string;
+    price: number;
+  }> = [];
 
-  const certificates = [
-    { id: 1, name: "شهادة إتمام دورة Arduino", date: "2024-02-15" },
-  ];
+  const certificates: Array<{ id: number; name: string; date: string }> = [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary-900 via-secondary-800 to-primary-900">
@@ -151,51 +133,25 @@ const StudentHome: React.FC = () => {
           </div>
         </section>
 
-        {/* Available Courses */}
+        {/* Enrolled Courses shortcut */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white">الكورسات المتاحة</h2>
+            <h2 className="text-2xl font-bold text-white">كورساتي</h2>
             <Link
-              to="/student/available-courses"
+              to="/student/courses"
               className="text-primary-400 hover:text-primary-300 flex items-center"
             >
-              عرض الكل
+              إدارة الكورسات
               <ArrowRight className="w-4 h-4 mr-2" />
             </Link>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {availableCourses.map((course) => (
-              <div
-                key={course.id}
-                className="bg-gradient-to-br from-secondary-800/50 to-secondary-900/50 backdrop-blur-xl rounded-2xl p-6 border border-primary-500/20"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <h3 className="text-xl font-semibold text-white">
-                    {course.name}
-                  </h3>
-                  <Brain className="w-6 h-6 text-accent-400" />
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">تاريخ البدء:</span>
-                    <span className="text-white">
-                      {new Date(course.startDate).toLocaleDateString("ar-EG")}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">السعر:</span>
-                    <span className="text-white">{course.price} ج.م</span>
-                  </div>
-                </div>
-
-                <button className="w-full mt-4 bg-primary-500 hover:bg-primary-600 text-white rounded-xl py-2 transition-colors">
-                  سجل الآن
-                </button>
+            {enrolledCourses.length === 0 && (
+              <div className="bg-gradient-to-br from-secondary-800/50 to-secondary-900/50 backdrop-blur-xl rounded-2xl p-6 border border-primary-500/20 text-center text-gray-300">
+                لا توجد كورسات مسجلة بعد
               </div>
-            ))}
+            )}
           </div>
         </section>
 

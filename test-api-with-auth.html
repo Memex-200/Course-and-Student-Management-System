@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>API Test with Authentication</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .test-result {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+      .info {
+        background-color: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+      }
+      button {
+        padding: 10px 20px;
+        margin: 5px;
+        cursor: pointer;
+      }
+      input {
+        padding: 8px;
+        margin: 5px;
+        width: 200px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>API Test with Authentication</h1>
+
+    <div>
+      <input type="text" id="username" placeholder="Username" value="memex" />
+      <input
+        type="password"
+        id="password"
+        placeholder="Password"
+        value="Eman@123!"
+      />
+      <button onclick="loginAndTest()">Login and Test API</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+      let authToken = null;
+
+      function addResult(message, type = "info") {
+        const results = document.getElementById("results");
+        const div = document.createElement("div");
+        div.className = `test-result ${type}`;
+        div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+        results.appendChild(div);
+      }
+
+      async function login() {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        try {
+          addResult("Attempting to login...", "info");
+          const response = await fetch("http://localhost:5227/api/auth/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ username, password }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            authToken = data.token;
+            addResult("✅ Login successful!", "success");
+            return true;
+          } else {
+            const errorData = await response.text();
+            addResult(
+              `❌ Login failed: ${response.status} - ${errorData}`,
+              "error"
+            );
+            return false;
+          }
+        } catch (error) {
+          addResult(`❌ Login error: ${error.message}`, "error");
+          return false;
+        }
+      }
+
+      async function testDebugEndpoint() {
+        try {
+          addResult("Testing debug endpoint...", "info");
+          const response = await fetch(
+            "http://localhost:5227/api/payments/debug-simple",
+            {
+              headers: {
+                Authorization: `Bearer ${authToken}`,
+              },
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            addResult(
+              `✅ Debug endpoint working: ${JSON.stringify(data)}`,
+              "success"
+            );
+          } else {
+            const errorData = await response.text();
+            addResult(
+              `❌ Debug endpoint failed: ${response.status} - ${errorData}`,
+              "error"
+            );
+          }
+        } catch (error) {
+          addResult(`❌ Debug endpoint error: ${error.message}`, "error");
+        }
+      }
+
+      async function testAllTransactionsEndpoint() {
+        try {
+          addResult("Testing all-transactions endpoint...", "info");
+          const response = await fetch(
+            "http://localhost:5227/api/payments/all-transactions",
+            {
+              headers: {
+                Authorization: `Bearer ${authToken}`,
+              },
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            addResult(
+              `✅ All-transactions endpoint working! Found ${
+                data.data?.length || 0
+              } transactions`,
+              "success"
+            );
+            addResult(
+              `Summary: Income: ${data.totalIncome}, Expenses: ${data.totalExpenses}, Net: ${data.netBalance}`,
+              "info"
+            );
+          } else {
+            const errorData = await response.text();
+            addResult(
+              `❌ All-transactions endpoint failed: ${response.status} - ${errorData}`,
+              "error"
+            );
+          }
+        } catch (error) {
+          addResult(
+            `❌ All-transactions endpoint error: ${error.message}`,
+            "error"
+          );
+        }
+      }
+
+      async function loginAndTest() {
+        addResult("🚀 Starting API tests with authentication...", "info");
+
+        const loginSuccess = await login();
+        if (loginSuccess) {
+          setTimeout(testDebugEndpoint, 500);
+          setTimeout(testAllTransactionsEndpoint, 1000);
+        }
+      }
+    </script>
+  </body>
+</html>

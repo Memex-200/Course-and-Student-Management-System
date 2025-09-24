@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import coursesAPI from "../../lib/api/coursesAPI";
-import { CourseFormData, CourseWithEnrollments } from "../../types/course";
+import { CourseFormData, CourseWithEnrollments } from "../../types/course.ts";
 import { useAuth } from "../../contexts/AuthContext";
 import toast from "react-hot-toast";
 import { Save, ArrowRight } from "lucide-react";
@@ -49,6 +49,7 @@ const CourseForm: React.FC = () => {
     branchId: null,
     content: "",
     prerequisites: "",
+    driveLink: "",
     scheduleDetails: {
       days: [],
       startTime: "",
@@ -91,7 +92,7 @@ const CourseForm: React.FC = () => {
           startDate: course.startDate.split("T")[0],
           endDate: course.endDate.split("T")[0],
           schedule: course.schedule,
-          sessionsCount: course.sessionsCount,
+          sessionsCount: course.sessionsCount || 0,
           maxStudents: course.maxStudents,
           price: course.price,
           instructorId: course.instructorId,
@@ -101,6 +102,7 @@ const CourseForm: React.FC = () => {
           labId: course.labId,
           content: course.content || "",
           prerequisites: course.prerequisites || "",
+          driveLink: (course as any).driveLink || "",
           scheduleDetails: course.scheduleDetails || {
             days: [],
             startTime: "",
@@ -155,6 +157,8 @@ const CourseForm: React.FC = () => {
         startTime: formData.scheduleDetails.startTime,
         endTime: formData.scheduleDetails.endTime,
         notes: "",
+        driveLink: formData.driveLink || undefined,
+        scheduleDetails: formData.scheduleDetails,
       };
 
       console.log("Submitting course data:", dataToSubmit);
@@ -513,6 +517,31 @@ const CourseForm: React.FC = () => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="المتطلبات الأساسية للانضمام للدورة..."
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Drive Link */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            رابط المواد (Drive)
+          </h2>
+          <div className="grid grid-cols-1 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                رابط Google Drive للمواد
+              </label>
+              <input
+                type="url"
+                name="driveLink"
+                value={formData.driveLink || ""}
+                onChange={handleChange}
+                placeholder="https://drive.google.com/..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                اختياري: سيظهر للطالب المسجل في لوحة التحكم.
+              </p>
             </div>
           </div>
         </div>

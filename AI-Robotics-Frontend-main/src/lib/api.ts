@@ -1,7 +1,8 @@
 import axios from "axios";
 import { AuthResponse, RegisterData } from "../types";
+import { API_CONFIG } from "../config/api";
 
-const API_BASE_URL = "http://localhost:5227/api";
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -16,13 +17,15 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-    // Log request details for debugging
-    console.log("Request config:", {
-      url: config.url,
-      method: config.method,
-      headers: config.headers,
-      data: config.data,
-    });
+    // Only log in development
+    if (process.env.NODE_ENV === "development") {
+      console.log("Request config:", {
+        url: config.url,
+        method: config.method,
+        headers: config.headers,
+        data: config.data,
+      });
+    }
   }
   return config;
 });

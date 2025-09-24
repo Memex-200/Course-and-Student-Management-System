@@ -8,7 +8,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Microsoft.Extensions.Logging; // Added for logging
 using System.Linq; // Added for string.Join
-using BCrypt.Net;
+using BCryptNet = BCrypt.Net.BCrypt;
 
 namespace Api.Controllers
 {
@@ -140,6 +140,50 @@ namespace Api.Controllers
                     error = ex.Message,
                     data = new List<object>()
                 });
+            }
+        }
+
+        [HttpGet("{id}")]
+        [Authorize(Policy = "AdminOrEmployee")]
+        public async Task<IActionResult> GetStudentById(int id)
+        {
+            try
+            {
+                var student = await _context.Students
+                    .Include(s => s.Branch)
+                    .Include(s => s.CourseRegistrations)
+                    .FirstOrDefaultAsync(s => s.Id == id);
+
+                if (student == null)
+                    return NotFound(new { success = false, message = "الطالب غير موجود" });
+
+                var data = new
+                {
+                    student.Id,
+                    student.FullName,
+                    student.Phone,
+                    student.Email,
+                    student.Age,
+                    student.Gender,
+                    student.School,
+                    student.ParentName,
+                    student.ParentPhone,
+                    student.EmergencyContact,
+                    student.EmergencyPhone,
+                    student.MedicalConditions,
+                    student.BranchId,
+                    branch = student.Branch != null ? new { id = student.Branch.Id, name = student.Branch.Name } : null,
+                    registeredCourses = student.CourseRegistrations.Count(cr => cr.PaymentStatus != PaymentStatus.Cancelled),
+                    student.IsActive,
+                    student.CreatedAt
+                };
+
+                return Ok(new { success = true, data });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting student by id {StudentId}", id);
+                return StatusCode(500, new { success = false, message = "حدث خطأ في الخادم", error = ex.Message });
             }
         }
 
@@ -392,6 +436,32 @@ namespace Api.Controllers
 
                 await _context.SaveChangesAsync();
 
+                // If fully paid, auto-create user account and send credentials
+                try
+                {
+                    if (registration.PaymentStatus == PaymentStatus.FullyPaid)
+                    {
+                        // Check if student already has a user account
+                        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.StudentId == student.Id);
+                        if (existingUser == null)
+                        {
+                            var (createdUser, _) = await CreateUserAccountForStudentAsync(student);
+                            if (createdUser != null)
+                            {
+                                _logger.LogInformation($"Auto-created student account after full payment. Username: {createdUser.Username}");
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Failed to auto-create student account after full payment");
+                            }
+                        }
+                    }
+                }
+                catch (Exception accEx)
+                {
+                    _logger.LogError(accEx, "Error auto-creating account after registration full payment");
+                }
+
                 // Send course enrollment email
                 if (!string.IsNullOrEmpty(student.Email))
                 {
@@ -435,25 +505,139 @@ namespace Api.Controllers
         [Authorize(Policy = "AdminOrEmployee")]
         public async Task<IActionResult> UpdateCourseRegistrationPayment(int registrationId, [FromBody] UpdatePaymentRequest request)
         {
-            var registration = await _context.CourseRegistrations.FindAsync(registrationId);
-            if (registration == null)
-                return NotFound(new { message = "تسجيل الكورس غير موجود" });
+            try
+            {
+                var registration = await _context.CourseRegistrations
+                    .Include(cr => cr.Student)
+                    .Include(cr => cr.Course)
+                    .FirstOrDefaultAsync(cr => cr.Id == registrationId);
+                
+                if (registration == null)
+                    return NotFound(new { message = "تسجيل الكورس غير موجود" });
 
-            registration.PaidAmount = request.PaidAmount;
-            registration.PaymentMethod = request.PaymentMethod;
-            registration.PaymentDate = DateTime.UtcNow;
-            registration.PaymentNotes = request.Notes;
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var previousPaidAmount = registration.PaidAmount;
+                var newPaidAmount = request.PaidAmount;
+                var previousPaymentStatus = registration.PaymentStatus;
 
-            // تحديث حالة الدفع بناءً على المبلغ المدفوع
-            if (registration.PaidAmount >= registration.TotalAmount)
-                registration.PaymentStatus = PaymentStatus.FullyPaid;
-            else if (registration.PaidAmount > 0)
-                registration.PaymentStatus = PaymentStatus.PartiallyPaid;
-            else
-                registration.PaymentStatus = PaymentStatus.Unpaid;
+                // تحديث المبلغ المدفوع
+                registration.PaidAmount = request.PaidAmount;
+                registration.PaymentMethod = request.PaymentMethod;
+                registration.PaymentDate = DateTime.UtcNow;
+                registration.PaymentNotes = request.Notes;
 
-            await _context.SaveChangesAsync();
-            return Ok(new { message = "تم تحديث حالة الدفع بنجاح" });
+                // تحديث حالة الدفع بناءً على المبلغ المدفوع
+                if (registration.PaidAmount >= registration.TotalAmount)
+                    registration.PaymentStatus = PaymentStatus.FullyPaid;
+                else if (registration.PaidAmount > 0)
+                    registration.PaymentStatus = PaymentStatus.PartiallyPaid;
+                else
+                    registration.PaymentStatus = PaymentStatus.Unpaid;
+
+                // منطق إضافة/إزالة سجل الدفع
+                var paymentDifference = newPaidAmount - previousPaidAmount;
+                var newPaymentStatus = registration.PaymentStatus;
+
+                // إذا زاد المبلغ المدفوع، أضف سجل دفع جديد
+                if (paymentDifference > 0)
+                {
+                    var payment = new Payment
+                    {
+                        StudentId = registration.StudentId,
+                        CourseRegistrationId = registration.Id,
+                        BranchId = registration.Course.BranchId,
+                        Amount = paymentDifference,
+                        PaymentMethod = request.PaymentMethod,
+                        PaymentType = PaymentType.CourseFee,
+                        PaymentSource = PaymentSource.CourseFee,
+                        PaymentDate = DateTime.UtcNow,
+                        ProcessedByUserId = userId,
+                        Notes = request.Notes ?? "تحديث دفعة كورس",
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Payments.Add(payment);
+
+                    // إضافة سجل إيراد إلى جدول المصروفات
+                    var expense = new Expense
+                    {
+                        Title = $"إيراد كورس '{registration.Course.Name}' - {registration.Student.FullName}",
+                        Description = $"تحديث دفعة من الطالب {registration.Student.FullName} لكورس {registration.Course.Name}",
+                        Amount = paymentDifference, // مبلغ موجب للإيراد
+                        ExpenseDate = DateTime.UtcNow,
+                        Category = ExpenseCategory.Training,
+                        Status = ExpenseStatus.Paid,
+                        Priority = ExpensePriority.Low,
+                        PaymentMethod = request.PaymentMethod,
+                        BranchId = registration.Course.BranchId ?? 1,
+                        RequestedByUserId = userId,
+                        ApprovedByUserId = userId,
+                        ApprovedAt = DateTime.UtcNow,
+                        Notes = $"تحديث إيراد من دفع رسوم الكورس - {request.Notes}",
+                        CreatedAt = DateTime.UtcNow,
+                        Vendor = "إيرادات التدريب"
+                    };
+                    _context.Expenses.Add(expense);
+                }
+                // إذا قل المبلغ المدفوع (تم إلغاء جزء من الدفع)، أضف سجل دفع سالب
+                else if (paymentDifference < 0)
+                {
+                    var refundPayment = new Payment
+                    {
+                        StudentId = registration.StudentId,
+                        CourseRegistrationId = registration.Id,
+                        BranchId = registration.Course.BranchId,
+                        Amount = Math.Abs(paymentDifference), // مبلغ موجب للاسترداد
+                        PaymentMethod = request.PaymentMethod,
+                        PaymentType = PaymentType.CourseFee,
+                        PaymentSource = PaymentSource.CourseFee,
+                        PaymentDate = DateTime.UtcNow,
+                        ProcessedByUserId = userId,
+                        Notes = $"استرداد جزئي - {request.Notes}",
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Payments.Add(refundPayment);
+
+                    // إضافة سجل مصروف للاسترداد
+                    var refundExpense = new Expense
+                    {
+                        Title = $"استرداد كورس '{registration.Course.Name}' - {registration.Student.FullName}",
+                        Description = $"استرداد جزئي للطالب {registration.Student.FullName} من كورس {registration.Course.Name}",
+                        Amount = paymentDifference, // مبلغ سالب للاسترداد
+                        ExpenseDate = DateTime.UtcNow,
+                        Category = ExpenseCategory.Training,
+                        Status = ExpenseStatus.Paid,
+                        Priority = ExpensePriority.Low,
+                        PaymentMethod = request.PaymentMethod,
+                        BranchId = registration.Course.BranchId ?? 1,
+                        RequestedByUserId = userId,
+                        ApprovedByUserId = userId,
+                        ApprovedAt = DateTime.UtcNow,
+                        Notes = $"استرداد من دفع رسوم الكورس - {request.Notes}",
+                        CreatedAt = DateTime.UtcNow,
+                        Vendor = "استردادات التدريب"
+                    };
+                    _context.Expenses.Add(refundExpense);
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { 
+                    message = "تم تحديث حالة الدفع بنجاح", 
+                    paidAmount = registration.PaidAmount,
+                    remainingAmount = registration.RemainingAmount,
+                    paymentStatus = registration.PaymentStatus.ToString(),
+                    paymentStatusArabic = GetPaymentStatusArabic(registration.PaymentStatus),
+                    paymentMethod = registration.PaymentMethod,
+                    paymentMethodArabic = GetPaymentMethodArabic(registration.PaymentMethod ?? PaymentMethod.Cash)
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating course registration payment for registration {RegistrationId}", registrationId);
+                return StatusCode(500, new { message = "حدث خطأ في الخادم", error = ex.Message });
+            }
         }
 
         [HttpPut("course-registrations/{registrationId}/update-status")]
@@ -462,9 +646,17 @@ namespace Api.Controllers
         {
             try
             {
-                var registration = await _context.CourseRegistrations.FindAsync(registrationId);
+                var registration = await _context.CourseRegistrations
+                    .Include(cr => cr.Student)
+                    .Include(cr => cr.Course)
+                    .Include(cr => cr.Payments)
+                    .FirstOrDefaultAsync(cr => cr.Id == registrationId);
+                
                 if (registration == null)
                     return NotFound(new { message = "تسجيل الكورس غير موجود" });
+
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var previousStatus = registration.PaymentStatus;
 
                 // تحديث حالة التسجيل
                 switch (request.Status.ToLower())
@@ -481,6 +673,48 @@ namespace Api.Controllers
                         break;
                     case "dropped":
                         registration.PaymentStatus = PaymentStatus.Cancelled;
+                        
+                        // إذا كان هناك مدفوعات، أضف سجل استرداد
+                        if (registration.PaidAmount > 0)
+                        {
+                            var refundPayment = new Payment
+                            {
+                                StudentId = registration.StudentId,
+                                CourseRegistrationId = registration.Id,
+                                BranchId = registration.Course.BranchId,
+                                Amount = registration.PaidAmount,
+                                PaymentMethod = registration.PaymentMethod ?? PaymentMethod.Cash,
+                                PaymentType = PaymentType.CourseFee,
+                                PaymentSource = PaymentSource.CourseFee,
+                                PaymentDate = DateTime.UtcNow,
+                                ProcessedByUserId = userId,
+                                Notes = "استرداد كامل - إلغاء التسجيل",
+                                IsActive = true,
+                                CreatedAt = DateTime.UtcNow
+                            };
+                            _context.Payments.Add(refundPayment);
+
+                            // إضافة سجل مصروف للاسترداد
+                            var refundExpense = new Expense
+                            {
+                                Title = $"استرداد كامل كورس '{registration.Course.Name}' - {registration.Student.FullName}",
+                                Description = $"استرداد كامل للطالب {registration.Student.FullName} من كورس {registration.Course.Name} - إلغاء التسجيل",
+                                Amount = -registration.PaidAmount, // مبلغ سالب للاسترداد
+                                ExpenseDate = DateTime.UtcNow,
+                                Category = ExpenseCategory.Training,
+                                Status = ExpenseStatus.Paid,
+                                Priority = ExpensePriority.Medium,
+                                PaymentMethod = registration.PaymentMethod ?? PaymentMethod.Cash,
+                                BranchId = registration.Course.BranchId ?? 1,
+                                RequestedByUserId = userId,
+                                ApprovedByUserId = userId,
+                                ApprovedAt = DateTime.UtcNow,
+                                Notes = "استرداد كامل من إلغاء تسجيل الكورس",
+                                CreatedAt = DateTime.UtcNow,
+                                Vendor = "استردادات التدريب"
+                            };
+                            _context.Expenses.Add(refundExpense);
+                        }
                         break;
                     default:
                         return BadRequest(new { message = "حالة التسجيل غير صحيحة" });
@@ -491,6 +725,7 @@ namespace Api.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Error updating course registration status for registration {RegistrationId}", registrationId);
                 return StatusCode(500, new { message = "حدث خطأ في الخادم", error = ex.Message });
             }
         }
@@ -522,12 +757,12 @@ namespace Api.Controllers
                         username = existingUser.Username });
 
                 // إنشاء username فريد
-                var baseUsername = GenerateUsername(student.FullName, student.Phone);
+                var baseUsername = _passwordGenerator.GenerateUsername(student.FullName);
                 var username = await EnsureUniqueUsername(baseUsername);
 
                 // إنشاء password عشوائي
-                var password = GenerateRandomPassword();
-                var hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
+                var password = _passwordGenerator.GenerateRandomPassword();
+                var hashedPassword = BCryptNet.HashPassword(password);
 
                 // إنشاء المستخدم الجديد
                 var newUser = new User
@@ -756,6 +991,7 @@ namespace Api.Controllers
                             Schedule = cr.Course.Schedule,
                             InstructorName = cr.Course.Instructor?.FullName ?? "غير محدد",
                             Progress = CalculateCourseProgress(cr.Course, student.Attendances.Where(a => a.CourseId == cr.Course.Id).ToList())
+                            ,DriveLink = cr.Course.DriveLink
                         }).ToList()
                 };
 
@@ -852,26 +1088,27 @@ namespace Api.Controllers
                     return NotFound(new { message = "بيانات الطالب غير موجودة" });
 
                 // جلب سجل المدفوعات
-                var payments = await _context.Payments
+                var paymentsData = await _context.Payments
                     .Include(p => p.CourseRegistration)
                         .ThenInclude(cr => cr.Course)
                     .Include(p => p.ProcessedByUser)
                     .Where(p => p.StudentId == student.Id && p.IsActive)
                     .OrderByDescending(p => p.PaymentDate)
-                    .Select(p => new
-                    {
-                        p.Id,
-                        p.Amount,
-                        PaymentMethod = p.PaymentMethod.ToString(),
-                        PaymentMethodArabic = GetPaymentMethodArabic(p.PaymentMethod),
-                        PaymentType = p.PaymentType.ToString(),
-                        PaymentTypeArabic = GetPaymentTypeArabic(p.PaymentType),
-                        p.PaymentDate,
-                        p.Notes,
-                        CourseName = p.CourseRegistration != null ? p.CourseRegistration.Course.Name : null,
-                        ProcessedBy = p.ProcessedByUser.FullName
-                    })
                     .ToListAsync();
+
+                var payments = paymentsData.Select(p => new
+                {
+                    p.Id,
+                    p.Amount,
+                    PaymentMethod = p.PaymentMethod.ToString(),
+                    PaymentMethodArabic = GetPaymentMethodArabic(p.PaymentMethod),
+                    PaymentType = p.PaymentType.ToString(),
+                    PaymentTypeArabic = GetPaymentTypeArabic(p.PaymentType),
+                    p.PaymentDate,
+                    p.Notes,
+                    CourseName = p.CourseRegistration?.Course?.Name,
+                    ProcessedBy = p.ProcessedByUser?.FullName
+                }).ToList();
 
                 // حساب إجمالي المدفوع والمستحق
                 var totalPaid = payments.Sum(p => p.Amount);
@@ -891,9 +1128,20 @@ namespace Api.Controllers
                     PaymentHistory = payments.Take(5).Cast<object>().ToList(), // آخر 5 مدفوعات
                     Courses = student.CourseRegistrations
                         .Where(cr => cr.PaymentStatus != PaymentStatus.Cancelled)
+                        .Select(cr => new
+                        {
+                            cr.Course,
+                            cr.PaymentStatus,
+                            AttendedSessions = student.Attendances
+                                .Count(a => a.CourseId == cr.Course.Id && a.Status == AttendanceStatus.Present),
+                            AbsentSessions = student.Attendances
+                                .Count(a => a.CourseId == cr.Course.Id && a.Status == AttendanceStatus.Absent),
+                        })
+                        .ToList()
                         .Select(cr =>
                         {
                             var certificate = certificates.FirstOrDefault(c => c.CourseId == cr.Course.Id);
+                            var courseAttendances = student.Attendances.Where(a => a.CourseId == cr.Course.Id).ToList();
                             return new StudentCourseDTO
                             {
                                 CourseId = cr.Course.Id,
@@ -901,19 +1149,18 @@ namespace Api.Controllers
                                 StartDate = cr.Course.StartDate,
                                 EndDate = cr.Course.EndDate,
                                 TotalSessions = cr.Course.SessionsCount,
-                                AttendedSessions = student.Attendances
-                                    .Count(a => a.CourseId == cr.Course.Id && a.Status == AttendanceStatus.Present),
-                                AbsentSessions = student.Attendances
-                                    .Count(a => a.CourseId == cr.Course.Id && a.Status == AttendanceStatus.Absent),
+                                AttendedSessions = cr.AttendedSessions,
+                                AbsentSessions = cr.AbsentSessions,
                                 IsCompleted = cr.Course.Status == CourseStatus.Completed,
                                 PaymentStatus = cr.PaymentStatus.ToString(),
                                 PaymentStatusArabic = GetPaymentStatusArabic(cr.PaymentStatus),
                                 NextSessionDate = GetNextSessionDate(cr.Course),
                                 Schedule = cr.Course.Schedule,
                                 InstructorName = cr.Course.Instructor?.FullName ?? "غير محدد",
-                                Progress = CalculateCourseProgress(cr.Course, student.Attendances.Where(a => a.CourseId == cr.Course.Id).ToList()),
+                                Progress = CalculateCourseProgress(cr.Course, courseAttendances),
                                 CertificateUrl = certificate?.CertificateUrl,
-                                ExamScore = certificate?.ExamScore
+                                ExamScore = certificate?.ExamScore,
+                                DriveLink = cr.Course.DriveLink
                             };
                         }).ToList()
                 };
@@ -1132,6 +1379,18 @@ namespace Api.Controllers
             var random = new Random().Next(100, 999);
 
             return $"CERT-{courseCode}-{studentCode}-{timestamp}-{random}";
+        }
+
+        private async Task<string> EnsureUniqueUsername(string baseUsername)
+        {
+            var candidate = baseUsername;
+            var suffix = 1;
+            while (await _context.Users.AnyAsync(u => u.Username == candidate))
+            {
+                candidate = baseUsername + suffix.ToString();
+                suffix++;
+            }
+            return candidate;
         }
     }
 

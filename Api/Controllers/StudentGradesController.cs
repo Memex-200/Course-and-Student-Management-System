@@ -114,8 +114,15 @@ namespace Api.Controllers
                 // للطلاب: يمكنهم فقط رؤية درجاتهم
                 if (userRole == "Student")
                 {
-                    var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == userId);
-                    if (student == null || student.Id != studentId)
+                    var student = await _context.Students.FirstOrDefaultAsync(s => s.Id == studentId);
+                    if (student == null)
+                    {
+                        return Forbid();
+                    }
+                    
+                    // التحقق من أن الطالب مرتبط بالمستخدم الحالي
+                    var user = await _context.Users.FirstOrDefaultAsync(u => u.StudentId == studentId);
+                    if (user == null || user.Id != userId)
                     {
                         return Forbid();
                     }

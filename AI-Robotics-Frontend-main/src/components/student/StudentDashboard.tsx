@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-//import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   Calendar,
   Clock,
@@ -30,6 +30,7 @@ interface StudentCourse {
   progress: number;
   certificateUrl?: string;
   examScore?: number;
+  driveLink?: string | null;
 }
 
 interface StudentDashboardData {
@@ -44,9 +45,12 @@ interface StudentDashboardData {
 }
 
 const StudentDashboard: React.FC = () => {
-  //const { user } = useAuth();
-  const [studentInfo, setStudentInfo] = useState<StudentDashboardData | null>(null);
+  const { user } = useAuth();
+  const [studentInfo, setStudentInfo] = useState<StudentDashboardData | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStudentDashboard();
@@ -54,15 +58,20 @@ const StudentDashboard: React.FC = () => {
 
   const fetchStudentDashboard = async () => {
     try {
+      setError(null);
       const response = await axios.get("/students/my-dashboard");
       if (response.data.success) {
         setStudentInfo(response.data.data);
       } else {
-        toast.error("خطأ في جلب بيانات الطالب");
+        setError(response.data.message || "فشل في تحميل بيانات الطالب");
+        toast.error(response.data.message || "فشل في تحميل بيانات الطالب");
       }
     } catch (error: any) {
       console.error("Error fetching student dashboard:", error);
-      toast.error("خطأ في جلب بيانات الطالب");
+      const errorMessage =
+        error.response?.data?.message || "حدث خطأ في تحميل البيانات";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -91,12 +100,20 @@ const StudentDashboard: React.FC = () => {
     );
   }
 
-  if (!studentInfo) {
+  if (!studentInfo && !loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-secondary-900 via-secondary-800 to-secondary-900 flex items-center justify-center">
         <div className="text-center">
           <XCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <p className="text-red-400 text-lg">لا توجد بيانات للطالب</p>
+          <p className="text-red-400 text-lg">
+            {error || "لا توجد بيانات للطالب"}
+          </p>
+          <button
+            onClick={fetchStudentDashboard}
+            className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            إعادة المحاولة
+          </button>
         </div>
       </div>
     );
@@ -110,16 +127,16 @@ const StudentDashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-white mb-2">
-                مرحباً، {studentInfo.studentName}
+                مرحباً، {studentInfo?.studentName}
               </h1>
               <p className="text-primary-100">لوحة تحكم الطالب</p>
             </div>
             <div className="text-right">
               <div className="flex items-center gap-2 text-primary-100 mb-2">
                 <Phone className="w-4 h-4" />
-                <span>{studentInfo.phone}</span>
+                <span>{studentInfo?.phone}</span>
               </div>
-              {studentInfo.email && (
+              {studentInfo?.email && (
                 <div className="flex items-center gap-2 text-primary-100">
                   <Mail className="w-4 h-4" />
                   <span>{studentInfo.email}</span>
@@ -135,7 +152,9 @@ const StudentDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-primary-300 text-sm">إجمالي الكورسات</p>
-                <p className="text-2xl font-bold text-white">{studentInfo.courses.length}</p>
+                <p className="text-2xl font-bold text-white">
+                  {studentInfo?.courses?.length || 0}
+                </p>
               </div>
               <span className="w-8 h-8 text-primary-400 text-2xl">📚</span>
             </div>
@@ -146,7 +165,8 @@ const StudentDashboard: React.FC = () => {
               <div>
                 <p className="text-primary-300 text-sm">الكورسات المكتملة</p>
                 <p className="text-2xl font-bold text-white">
-                  {studentInfo.courses.filter(c => c.isCompleted).length}
+                  {studentInfo?.courses?.filter((c) => c.isCompleted).length ||
+                    0}
                 </p>
               </div>
               <span className="w-8 h-8 text-green-400 text-2xl">🏆</span>
@@ -158,7 +178,10 @@ const StudentDashboard: React.FC = () => {
               <div>
                 <p className="text-primary-300 text-sm">إجمالي الحضور</p>
                 <p className="text-2xl font-bold text-white">
-                  {studentInfo.courses.reduce((sum, c) => sum + c.attendedSessions, 0)}
+                  {studentInfo?.courses?.reduce(
+                    (sum, c) => sum + c.attendedSessions,
+                    0
+                  ) || 0}
                 </p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-400" />
@@ -170,7 +193,10 @@ const StudentDashboard: React.FC = () => {
               <div>
                 <p className="text-primary-300 text-sm">إجمالي الغياب</p>
                 <p className="text-2xl font-bold text-white">
-                  {studentInfo.courses.reduce((sum, c) => sum + c.absentSessions, 0)}
+                  {studentInfo?.courses?.reduce(
+                    (sum, c) => sum + c.absentSessions,
+                    0
+                  ) || 0}
                 </p>
               </div>
               <XCircle className="w-8 h-8 text-red-400" />
@@ -182,31 +208,41 @@ const StudentDashboard: React.FC = () => {
               <div>
                 <p className="text-green-300 text-sm">إجمالي المدفوع</p>
                 <p className="text-2xl font-bold text-green-400">
-                  {studentInfo.totalPaid.toLocaleString()} جنيه
+                  {studentInfo?.totalPaid?.toLocaleString() || 0} جنيه
                 </p>
               </div>
               <span className="w-8 h-8 text-green-400 text-2xl">💰</span>
             </div>
           </div>
 
-          <div className={`backdrop-blur-sm rounded-2xl p-6 border ${
-            studentInfo.outstandingBalance > 0 
-              ? "bg-red-600/20 border-red-500/30" 
-              : "bg-green-600/20 border-green-500/30"
-          }`}>
+          <div
+            className={`backdrop-blur-sm rounded-2xl p-6 border ${
+              (studentInfo?.outstandingBalance || 0) > 0
+                ? "bg-red-600/20 border-red-500/30"
+                : "bg-green-600/20 border-green-500/30"
+            }`}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm">الرصيد المستحق</p>
-                <p className={`text-2xl font-bold ${
-                  studentInfo.outstandingBalance > 0 ? "text-red-400" : "text-green-400"
-                }`}>
-                  {studentInfo.outstandingBalance.toLocaleString()} جنيه
+                <p
+                  className={`text-2xl font-bold ${
+                    (studentInfo?.outstandingBalance || 0) > 0
+                      ? "text-red-400"
+                      : "text-green-400"
+                  }`}
+                >
+                  {(studentInfo?.outstandingBalance || 0).toLocaleString()} جنيه
                 </p>
               </div>
-              <span className={`w-8 h-8 text-2xl ${
-                studentInfo.outstandingBalance > 0 ? "text-red-400" : "text-green-400"
-              }`}>
-                {studentInfo.outstandingBalance > 0 ? "⚠️" : "✅"}
+              <span
+                className={`w-8 h-8 text-2xl ${
+                  (studentInfo?.outstandingBalance || 0) > 0
+                    ? "text-red-400"
+                    : "text-green-400"
+                }`}
+              >
+                {(studentInfo?.outstandingBalance || 0) > 0 ? "⚠️" : "✅"}
               </span>
             </div>
           </div>
@@ -214,11 +250,12 @@ const StudentDashboard: React.FC = () => {
 
         {/* Notice */}
         <div className="mb-6 p-4 bg-blue-500/20 border border-blue-500/30 rounded-lg text-blue-300 text-center font-medium">
-          أول جلسة من كل كورس مجانية. عند حضور الجلسة الثانية يتم تفعيل الدفع تلقائيًا لهذا الكورس.
+          أول جلسة من كل كورس مجانية. عند حضور الجلسة الثانية يتم تفعيل الدفع
+          تلقائيًا لهذا الكورس.
         </div>
 
         {/* Payment History */}
-        {studentInfo.paymentHistory.length > 0 && (
+        {(studentInfo?.paymentHistory?.length || 0) > 0 && (
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
               <span className="text-2xl">💰</span>
@@ -229,15 +266,25 @@ const StudentDashboard: React.FC = () => {
                 <table className="min-w-full">
                   <thead className="bg-secondary-700/50">
                     <tr>
-                      <th className="px-6 py-3 text-right text-sm font-semibold text-primary-300">المبلغ</th>
-                      <th className="px-6 py-3 text-right text-sm font-semibold text-primary-300">نوع الدفع</th>
-                      <th className="px-6 py-3 text-right text-sm font-semibold text-primary-300">طريقة الدفع</th>
-                      <th className="px-6 py-3 text-right text-sm font-semibold text-primary-300">التاريخ</th>
-                      <th className="px-6 py-3 text-right text-sm font-semibold text-primary-300">الكورس</th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-primary-300">
+                        المبلغ
+                      </th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-primary-300">
+                        نوع الدفع
+                      </th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-primary-300">
+                        طريقة الدفع
+                      </th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-primary-300">
+                        التاريخ
+                      </th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-primary-300">
+                        الكورس
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-primary-500/20">
-                    {studentInfo.paymentHistory.map((payment, index) => (
+                    {studentInfo?.paymentHistory?.map((payment, index) => (
                       <tr key={index} className="hover:bg-secondary-700/30">
                         <td className="px-6 py-4 font-bold text-green-400">
                           {payment.amount.toLocaleString()} جنيه
@@ -249,10 +296,12 @@ const StudentDashboard: React.FC = () => {
                           {payment.paymentMethodArabic}
                         </td>
                         <td className="px-6 py-4 text-primary-200">
-                          {new Date(payment.paymentDate).toLocaleDateString('ar-EG')}
+                          {new Date(payment.paymentDate).toLocaleDateString(
+                            "ar-EG"
+                          )}
                         </td>
                         <td className="px-6 py-4 text-primary-200">
-                          {payment.courseName || '-'}
+                          {payment.courseName || "-"}
                         </td>
                       </tr>
                     ))}
@@ -265,7 +314,7 @@ const StudentDashboard: React.FC = () => {
 
         {/* Courses Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {studentInfo.courses.map((course) => (
+          {studentInfo?.courses?.map((course) => (
             <div
               key={course.courseId}
               className="bg-secondary-800/50 backdrop-blur-sm rounded-2xl p-6 border border-primary-500/20"
@@ -285,17 +334,36 @@ const StudentDashboard: React.FC = () => {
                 </div>
               </div>
 
+              {course.driveLink && (
+                <a
+                  href={course.driveLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-primary-500/20 text-primary-300 rounded-lg hover:bg-primary-500/30 transition-colors text-sm mb-3"
+                >
+                  <span>📂</span>
+                  <span>مواد الكورس (Drive)</span>
+                  <span>↗</span>
+                </a>
+              )}
+
               {/* Progress Bar */}
               <div className="mb-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-primary-300 text-sm">التقدم</span>
-                  <span className={`text-sm font-medium ${getProgressColor(course.progress)}`}>
+                  <span
+                    className={`text-sm font-medium ${getProgressColor(
+                      course.progress
+                    )}`}
+                  >
                     {course.progress}%
                   </span>
                 </div>
                 <div className="w-full bg-secondary-700 rounded-full h-2">
                   <div
-                    className={`h-2 rounded-full transition-all duration-300 ${getProgressBgColor(course.progress)}`}
+                    className={`h-2 rounded-full transition-all duration-300 ${getProgressBgColor(
+                      course.progress
+                    )}`}
                     style={{ width: `${course.progress}%` }}
                   ></div>
                 </div>
@@ -305,7 +373,9 @@ const StudentDashboard: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-primary-200">
                   <User className="w-4 h-4 text-primary-400" />
-                  <span className="text-sm">المدرب: {course.instructorName}</span>
+                  <span className="text-sm">
+                    المدرب: {course.instructorName}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-2 text-primary-200">
@@ -316,23 +386,32 @@ const StudentDashboard: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-400" />
-                    <span className="text-primary-200">حضر: {course.attendedSessions}</span>
+                    <span className="text-primary-200">
+                      حضر: {course.attendedSessions}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <XCircle className="w-4 h-4 text-red-400" />
-                    <span className="text-primary-200">غاب: {course.absentSessions}</span>
+                    <span className="text-primary-200">
+                      غاب: {course.absentSessions}
+                    </span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 text-primary-200">
-                  <span className="text-sm">إجمالي الجلسات: {course.totalSessions}</span>
+                  <span className="text-sm">
+                    إجمالي الجلسات: {course.totalSessions}
+                  </span>
                 </div>
 
                 {course.nextSessionDate && (
                   <div className="flex items-center gap-2 text-primary-200">
                     <Calendar className="w-4 h-4 text-yellow-400" />
                     <span className="text-sm">
-                      الجلسة القادمة: {new Date(course.nextSessionDate).toLocaleDateString('ar-EG')}
+                      الجلسة القادمة:{" "}
+                      {new Date(course.nextSessionDate).toLocaleDateString(
+                        "ar-EG"
+                      )}
                     </span>
                   </div>
                 )}
@@ -365,8 +444,12 @@ const StudentDashboard: React.FC = () => {
                       )}
                       {course.examScore && (
                         <div className="flex items-center gap-2 text-primary-200">
-                          <span className="w-4 h-4 text-yellow-400 text-2xl">🏆</span>
-                          <span className="text-sm">درجة الامتحان: {course.examScore}%</span>
+                          <span className="w-4 h-4 text-yellow-400 text-2xl">
+                            🏆
+                          </span>
+                          <span className="text-sm">
+                            درجة الامتحان: {course.examScore}%
+                          </span>
                         </div>
                       )}
                     </div>
@@ -377,7 +460,7 @@ const StudentDashboard: React.FC = () => {
           ))}
         </div>
 
-        {studentInfo.courses.length === 0 && (
+        {(!studentInfo?.courses || studentInfo.courses.length === 0) && (
           <div className="text-center py-12">
             <span className="w-16 h-16 text-primary-400/50 text-2xl">📚</span>
             <h3 className="text-lg font-medium text-primary-300 mb-2">

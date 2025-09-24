@@ -32,7 +32,7 @@ export interface TransactionRow {
   amount: number;
   paymentDate: string;
   branchName: string;
-  transactionType: "income" | "expense";
+  transactionType: "income" | "expenses";
   paymentStatus: string;
   invoiceUrl: string;
   category: string;
@@ -100,7 +100,8 @@ class PaymentsAPI {
     endDate?: string;
   }): Promise<{ transactions: TransactionRow[]; summary: FinancialSummary }> {
     try {
-      const response = await axios.get("/payments/all-transactions", {
+      // Try the clean transactions endpoint first
+      const response = await axios.get("/payments/clean-transactions", {
         params,
       });
       console.log("API Response:", response.data); // Debug log
@@ -114,29 +115,20 @@ class PaymentsAPI {
             amount: transaction.amount || 0,
             paymentDate: transaction.paymentDate,
             branchName: transaction.branchName || "-",
-            transactionType: transaction.transactionType as
-              | "income"
-              | "expense",
+            transactionType: "income" as const,
             paymentStatus: "paid",
-            invoiceUrl:
-              transaction.transactionType === "income"
-                ? `/api/invoices/payment/${transaction.id}`
-                : `/api/invoices/expense/${transaction.id}`,
-            category:
-              transaction.transactionType === "income" ? "التدريب" : "أخرى",
+            invoiceUrl: `/api/invoices/payment/${transaction.id}`,
+            category: "التدريب",
             description: transaction.notes || "معاملة مالية",
             processedBy: transaction.processedBy || "-",
             paymentMethod: transaction.paymentMethod || "نقدي",
-            paymentType:
-              transaction.transactionType === "income"
-                ? "رسوم الكورس"
-                : "مصروفات",
+            paymentType: "رسوم الكورس",
           })
         );
 
         const summary = {
           totalIncome: response.data.totalIncome || 0,
-          totalExpenses: response.data.totalExpenses || 0,
+          totalExpenses: 0, // No expenses in clean transactions
           netBalance: response.data.netBalance || 0,
         };
 
@@ -150,7 +142,55 @@ class PaymentsAPI {
         summary: { totalIncome: 0, totalExpenses: 0, netBalance: 0 },
       };
     } catch (error) {
-      console.error("Error fetching all transactions:", error);
+      console.error("Error fetching clean transactions:", error);
+      // Fallback to old endpoint if clean fails
+      try {
+        const response = await axios.get("/payments/all-transactions", {
+          params,
+        });
+        console.log("Fallback API Response:", response.data);
+
+        if (response.data.success) {
+          const transactions = (response.data.data || []).map(
+            (transaction: any) => ({
+              id: transaction.id,
+              studentName: transaction.studentName || "-",
+              courseName: transaction.courseName || "-",
+              amount: transaction.amount || 0,
+              paymentDate: transaction.paymentDate,
+              branchName: transaction.branchName || "-",
+              transactionType: transaction.transactionType as
+                | "income"
+                | "expenses",
+              paymentStatus: "paid",
+              invoiceUrl:
+                transaction.transactionType === "income"
+                  ? `/api/invoices/payment/${transaction.id}`
+                  : `/api/invoices/expense/${transaction.id}`,
+              category:
+                transaction.transactionType === "income" ? "التدريب" : "أخرى",
+              description: transaction.notes || "معاملة مالية",
+              processedBy: transaction.processedBy || "-",
+              paymentMethod: transaction.paymentMethod || "نقدي",
+              paymentType:
+                transaction.transactionType === "income"
+                  ? "رسوم الكورس"
+                  : "مصروفات",
+            })
+          );
+
+          const summary = {
+            totalIncome: response.data.totalIncome || 0,
+            totalExpenses: response.data.totalExpenses || 0,
+            netBalance: response.data.netBalance || 0,
+          };
+
+          return { transactions, summary };
+        }
+      } catch (fallbackError) {
+        console.error("Fallback also failed:", fallbackError);
+      }
+
       return {
         transactions: [],
         summary: { totalIncome: 0, totalExpenses: 0, netBalance: 0 },
@@ -165,8 +205,8 @@ class PaymentsAPI {
   }> {
     try {
       // Get payments data
-      const paymentsResponse = await axios.get("/payments");
-      const payments = paymentsResponse.data || [];
+      const paymentsResponse = await axios.get("/payments/all-transactions");
+      const payments = paymentsResponse.data?.data || [];
 
       // Get expenses data if available
       let expenses: any[] = [];
@@ -248,7 +288,7 @@ class PaymentsAPI {
   ): Promise<{ success: boolean; message: string }> {
     try {
       const response = await axios.post(
-        `/payments/course-registrations/${registrationId}/payment`,
+        `/payments/course-registrations/${registrationId}/payments`,
         {
           amount: parseFloat(paymentData.amount),
           paymentMethod: paymentData.paymentMethod,

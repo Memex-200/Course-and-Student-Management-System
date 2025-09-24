@@ -30,7 +30,10 @@ namespace Api.Controllers
         {
             try
             {
+                _logger.LogInformation($"Generating invoice for payment ID: {paymentId}");
+                
                 var payment = await _context.Payments
+                    .Include(p => p.Student)
                     .Include(p => p.CourseRegistration)
                         .ThenInclude(cr => cr.Student)
                     .Include(p => p.CourseRegistration)
@@ -39,15 +42,18 @@ namespace Api.Controllers
                     .FirstOrDefaultAsync(p => p.Id == paymentId);
 
                 if (payment == null)
+                {
+                    _logger.LogWarning($"Payment with ID {paymentId} not found");
                     return NotFound(new { message = "الدفعة غير موجودة" });
+                }
 
                 var invoiceNumber = $"INV-{payment.Id:D6}";
                 var invoiceData = new
                 {
                     InvoiceNumber = invoiceNumber,
                     InvoiceDate = payment.PaymentDate.ToString("yyyy-MM-dd"),
-                    StudentName = payment.CourseRegistration.Student?.FullName ?? "غير محدد",
-                    CourseName = payment.CourseRegistration.Course?.Name ?? "غير محدد",
+                    StudentName = payment.CourseRegistration?.Student?.FullName ?? payment.Student?.FullName ?? "غير محدد",
+                    CourseName = payment.CourseRegistration?.Course?.Name ?? "غير محدد",
                     Amount = payment.Amount,
                     PaymentMethod = GetPaymentMethodArabic(payment.PaymentMethod),
                     PaymentDate = payment.PaymentDate.ToString("yyyy-MM-dd"),
@@ -56,7 +62,9 @@ namespace Api.Controllers
                     Notes = payment.Notes ?? "دفعة كورس"
                 };
 
+                _logger.LogInformation($"Generating PDF for payment invoice: {invoiceNumber}");
                 var pdfBytes = GenerateInvoicePDF(invoiceData, "payment");
+                _logger.LogInformation($"PDF generated successfully for payment invoice: {invoiceNumber}");
                 return File(pdfBytes, "application/pdf", $"invoice-{invoiceNumber}.pdf");
             }
             catch (Exception ex)
@@ -72,13 +80,18 @@ namespace Api.Controllers
         {
             try
             {
+                _logger.LogInformation($"Generating invoice for expense ID: {expenseId}");
+                
                 var expense = await _context.Expenses
                     .Include(e => e.Branch)
                     .Include(e => e.RequestedByUser)
                     .FirstOrDefaultAsync(e => e.Id == expenseId);
 
                 if (expense == null)
+                {
+                    _logger.LogWarning($"Expense with ID {expenseId} not found");
                     return NotFound(new { message = "المصروف غير موجود" });
+                }
 
                 var invoiceNumber = $"EXP-{expense.Id:D6}";
                 var invoiceData = new
@@ -95,7 +108,9 @@ namespace Api.Controllers
                     Notes = expense.Notes ?? expense.Description
                 };
 
+                _logger.LogInformation($"Generating PDF for expense invoice: {invoiceNumber}");
                 var pdfBytes = GenerateInvoicePDF(invoiceData, "expense");
+                _logger.LogInformation($"PDF generated successfully for expense invoice: {invoiceNumber}");
                 return File(pdfBytes, "application/pdf", $"expense-{invoiceNumber}.pdf");
             }
             catch (Exception ex)
@@ -107,15 +122,26 @@ namespace Api.Controllers
 
         private byte[] GenerateInvoicePDF(dynamic invoiceData, string type)
         {
-            using (MemoryStream ms = new MemoryStream())
+            try
             {
-                Document document = new Document(PageSize.A4, 25, 25, 30, 30);
-                PdfWriter writer = PdfWriter.GetInstance(document, ms);
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    Document document = new Document(PageSize.A4, 25, 25, 30, 30);
+                    PdfWriter writer = PdfWriter.GetInstance(document, ms);
 
-                document.Open();
+                    document.Open();
 
                 // Add Arabic font support
-                BaseFont bf = BaseFont.CreateFont("C:\\Windows\\Fonts\\arial.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+                BaseFont bf;
+                try
+                {
+                    bf = BaseFont.CreateFont("C:\\Windows\\Fonts\\arial.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+                }
+                catch
+                {
+                    // Fallback to default font if Arial is not available
+                    bf = BaseFont.CreateFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
+                }
                 Font titleFont = new Font(bf, 18, Font.BOLD);
                 Font headerFont = new Font(bf, 12, Font.BOLD);
                 Font normalFont = new Font(bf, 10, Font.NORMAL);
@@ -159,6 +185,12 @@ namespace Api.Controllers
 
                 document.Close();
                 return ms.ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating PDF");
+                throw;
             }
         }
 

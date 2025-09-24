@@ -34,6 +34,7 @@ namespace Api.DTOs
         public int? RoomId { get; set; }
         public string RoomName { get; set; } = string.Empty;
         public string Schedule { get; set; } = string.Empty;
+        public string? DriveLink { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public string Prerequisites { get; set; } = string.Empty;
         public string CourseDays { get; set; } = string.Empty;
@@ -114,6 +115,8 @@ namespace Api.DTOs
 
         [MaxLength(500, ErrorMessage = "الملاحظات يجب ألا تتجاوز 500 حرف")]
         public string Notes { get; set; } = string.Empty;
+        [MaxLength(500)]
+        public string? DriveLink { get; set; }
     }
 
     public class UpdateCourseDTO
@@ -137,6 +140,7 @@ namespace Api.DTOs
         public string? StartTime { get; set; }
         public string? EndTime { get; set; }
         public string? Notes { get; set; }
+        public string? DriveLink { get; set; }
         public bool? IsActive { get; set; }
     }
 } 

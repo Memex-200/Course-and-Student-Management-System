@@ -420,6 +420,7 @@ namespace Api.Controllers
                     {
                         StudentId = registration.StudentId,
                         CourseRegistrationId = registration.Id,
+                        BranchId = registration.Course.BranchId,
                         Amount = diff,
                         PaymentMethod = request.PaymentMethod,
                         PaymentType = PaymentType.CourseFee,
@@ -452,6 +453,47 @@ namespace Api.Controllers
                         Vendor = "إيرادات التدريب"
                     };
                     _context.Expenses.Add(expense);
+                }
+                // إذا قل المبلغ المدفوع (تم إلغاء جزء من الدفع)، أضف سجل دفع سالب
+                else if (diff < 0)
+                {
+                    var refundPayment = new Payment
+                    {
+                        StudentId = registration.StudentId,
+                        CourseRegistrationId = registration.Id,
+                        BranchId = registration.Course.BranchId,
+                        Amount = Math.Abs(diff), // مبلغ موجب للاسترداد
+                        PaymentMethod = request.PaymentMethod,
+                        PaymentType = PaymentType.CourseFee,
+                        PaymentSource = PaymentSource.CourseFee,
+                        PaymentDate = DateTime.UtcNow,
+                        ProcessedByUserId = userId,
+                        Notes = $"استرداد جزئي - {request.Notes}",
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Payments.Add(refundPayment);
+
+                    // إضافة سجل مصروف للاسترداد
+                    var refundExpense = new Expense
+                    {
+                        Title = $"استرداد كورس '{registration.Course.Name}' - {registration.Student.FullName}",
+                        Description = $"استرداد جزئي للطالب {registration.Student.FullName} من كورس {registration.Course.Name}",
+                        Amount = diff, // مبلغ سالب للاسترداد
+                        ExpenseDate = DateTime.UtcNow,
+                        Category = ExpenseCategory.Training,
+                        Status = ExpenseStatus.Paid,
+                        Priority = ExpensePriority.Low,
+                        PaymentMethod = request.PaymentMethod,
+                        BranchId = registration.Course.BranchId ?? 1,
+                        RequestedByUserId = userId,
+                        ApprovedByUserId = userId,
+                        ApprovedAt = DateTime.UtcNow,
+                        Notes = $"استرداد من دفع رسوم الكورس - {request.Notes}",
+                        CreatedAt = DateTime.UtcNow,
+                        Vendor = "استردادات التدريب"
+                    };
+                    _context.Expenses.Add(refundExpense);
                 }
 
                 // تحديث المبلغ المدفوع
@@ -631,9 +673,11 @@ namespace Api.Controllers
                 var userBranchId = int.Parse(User.FindFirst("BranchId")?.Value ?? "0");
                 var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
 
-                // Get all payments
+                // Get only actual payments (not expenses that are duplicates of payments)
                 var paymentsQuery = _context.Payments
                     .Include(p => p.Student)
+                    .Include(p => p.CourseRegistration)
+                        .ThenInclude(cr => cr.Student)
                     .Include(p => p.CourseRegistration)
                         .ThenInclude(cr => cr.Course)
                             .ThenInclude(c => c.Branch)
@@ -655,33 +699,41 @@ namespace Api.Controllers
                 if (endDate.HasValue)
                     paymentsQuery = paymentsQuery.Where(p => p.PaymentDate <= endDate.Value);
 
-                var payments = await paymentsQuery
+                // Execute query first, then project on client side
+                var paymentsData = await paymentsQuery
                     .OrderByDescending(p => p.PaymentDate)
-                    .Select(p => new
-                    {
-                        Id = p.Id,
-                        StudentName = p.Student != null ? p.Student.FullName : string.Empty,
-                        CourseName = p.CourseRegistration != null && p.CourseRegistration.Course != null ? p.CourseRegistration.Course.Name : string.Empty,
-                        Amount = p.Amount,
-                        PaymentMethod = p.PaymentMethod.ToString(),
-                        PaymentMethodArabic = GetPaymentMethodArabic(p.PaymentMethod),
-                        PaymentType = p.PaymentType.ToString(),
-                        PaymentTypeArabic = GetPaymentTypeArabic(p.PaymentType),
-                        PaymentDate = p.PaymentDate,
-                        ProcessedBy = p.ProcessedByUser != null ? p.ProcessedByUser.FullName : string.Empty,
-                        Notes = p.Notes,
-                        RegistrationId = p.CourseRegistrationId ?? 0,
-                        BranchName = p.CourseRegistration != null && p.CourseRegistration.Course != null && p.CourseRegistration.Course.Branch != null ? p.CourseRegistration.Course.Branch.Name : string.Empty,
-                        TransactionType = "income",
-                        PaymentStatus = "paid"
-                    })
                     .ToListAsync();
 
-                // Get all expenses
+                var payments = paymentsData.Select(p => new
+                {
+                    Id = p.Id,
+                    StudentName = p.Student?.FullName ?? p.CourseRegistration?.Student?.FullName ?? string.Empty,
+                    CourseName = p.CourseRegistration?.Course?.Name ?? string.Empty,
+                    Amount = p.Amount,
+                    PaymentMethod = p.PaymentMethod.ToString(),
+                    PaymentMethodArabic = GetPaymentMethodArabic(p.PaymentMethod),
+                    PaymentType = p.PaymentType.ToString(),
+                    PaymentTypeArabic = GetPaymentTypeArabic(p.PaymentType),
+                    PaymentDate = p.PaymentDate,
+                    ProcessedBy = p.ProcessedByUser?.FullName ?? string.Empty,
+                    Notes = p.Notes,
+                    RegistrationId = p.CourseRegistrationId ?? 0,
+                    BranchName = p.CourseRegistration?.Course?.Branch?.Name ?? string.Empty,
+                    TransactionType = "income",
+                    PaymentStatus = "paid",
+                    Category = "التدريب",
+                    Description = p.Notes ?? "دفعة تدريب",
+                    InvoiceUrl = $"/api/invoices/payment/{p.Id}"
+                }).ToList();
+
+                // Get only actual expenses (not income records that duplicate payments)
+                // Filter out expenses that are income from course payments
                 var expensesQuery = _context.Expenses
                     .Include(e => e.Branch)
                     .Include(e => e.RequestedByUser)
-                    .Where(e => e.BranchId == userBranchId);
+                    .Where(e => e.BranchId == userBranchId && 
+                               e.Category != ExpenseCategory.Training && // Exclude training income
+                               e.Amount < 0); // Only actual expenses (negative amounts)
 
                 if (startDate.HasValue)
                     expensesQuery = expensesQuery.Where(e => e.ExpenseDate >= startDate.Value);
@@ -689,53 +741,143 @@ namespace Api.Controllers
                 if (endDate.HasValue)
                     expensesQuery = expensesQuery.Where(e => e.ExpenseDate <= endDate.Value);
 
-                var expenses = await expensesQuery
+                // Execute query first, then project on client side
+                var expensesData = await expensesQuery
                     .OrderByDescending(e => e.ExpenseDate)
-                    .Select(e => new
-                    {
-                        Id = e.Id + 1000000, // Unique ID for expenses
-                        StudentName = string.Empty,
-                        CourseName = string.Empty,
-                        Amount = Math.Abs(e.Amount),
-                        PaymentMethod = e.PaymentMethod.ToString(),
-                        PaymentMethodArabic = GetPaymentMethodArabic(e.PaymentMethod),
-                        PaymentType = "Expense",
-                        PaymentTypeArabic = GetExpenseCategoryArabic(e.Category),
-                        PaymentDate = e.ExpenseDate,
-                        ProcessedBy = e.RequestedByUser != null ? e.RequestedByUser.FullName : string.Empty,
-                        Notes = e.Description,
-                        RegistrationId = 0,
-                        BranchName = e.Branch != null ? e.Branch.Name : string.Empty,
-                        TransactionType = e.Amount >= 0 ? "income" : "expense",
-                        PaymentStatus = e.Status == ExpenseStatus.Paid ? "paid" : "pending"
-                    })
                     .ToListAsync();
+
+                var expenses = expensesData.Select(e => new
+                {
+                    Id = e.Id + 1000000, // Unique ID for expenses
+                    StudentName = string.Empty,
+                    CourseName = string.Empty,
+                    Amount = Math.Abs(e.Amount), // Make positive for display
+                    PaymentMethod = e.PaymentMethod.ToString(),
+                    PaymentMethodArabic = GetPaymentMethodArabic(e.PaymentMethod),
+                    PaymentType = "Expense",
+                    PaymentTypeArabic = GetExpenseCategoryArabic(e.Category),
+                    PaymentDate = e.ExpenseDate,
+                    ProcessedBy = e.RequestedByUser?.FullName ?? string.Empty,
+                    Notes = e.Description,
+                    RegistrationId = 0,
+                    BranchName = e.Branch?.Name ?? string.Empty,
+                    TransactionType = "expense",
+                    PaymentStatus = e.Status == ExpenseStatus.Paid ? "paid" : "pending",
+                    Category = GetExpenseCategoryArabic(e.Category),
+                    Description = e.Description,
+                    InvoiceUrl = $"/api/invoices/expense/{e.Id}"
+                }).ToList();
 
                 // Combine both results
                 var allTransactions = payments.Concat(expenses)
                     .OrderByDescending(t => t.PaymentDate)
                     .ToList();
 
-                // Calculate totals
-                var totalIncome = allTransactions
-                    .Where(t => t.TransactionType == "income")
-                    .Sum(t => t.Amount);
-
-                var totalExpenses = allTransactions
-                    .Where(t => t.TransactionType == "expense")
-                    .Sum(t => t.Amount);
+                // Calculate totals - only from actual payments
+                var totalIncome = payments.Sum(p => p.Amount);
+                var totalExpenses = expenses.Sum(e => e.Amount);
 
                 return Ok(new { 
                     success = true, 
                     data = allTransactions,
                     totalIncome,
                     totalExpenses,
-                    netBalance = totalIncome - totalExpenses
+                    netBalance = totalIncome - totalExpenses,
+                    paymentCount = payments.Count,
+                    expenseCount = expenses.Count
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "حدث خطأ في الخادم", error = ex.Message });
+                return StatusCode(500, new { 
+                    message = "حدث خطأ في الخادم", 
+                    error = ex.Message,
+                    stackTrace = ex.StackTrace,
+                    innerException = ex.InnerException?.Message
+                });
+            }
+        }
+
+        [HttpGet("clean-transactions")]
+        public async Task<IActionResult> GetCleanTransactions([FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                var userBranchId = int.Parse(User.FindFirst("BranchId")?.Value ?? "0");
+                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+
+                // Get only actual payments from people who paid
+                var paymentsQuery = _context.Payments
+                    .Include(p => p.Student)
+                    .Include(p => p.CourseRegistration)
+                        .ThenInclude(cr => cr.Student)
+                    .Include(p => p.CourseRegistration)
+                        .ThenInclude(cr => cr.Course)
+                            .ThenInclude(c => c.Branch)
+                    .Include(p => p.ProcessedByUser)
+                    .Where(p => p.IsActive && p.Amount > 0); // Only positive payments
+
+                // Filter by branch if not admin
+                if (userRole != "Admin")
+                {
+                    paymentsQuery = paymentsQuery.Where(p => 
+                        (p.CourseRegistration != null && p.CourseRegistration.Course != null && p.CourseRegistration.Course.BranchId == userBranchId) ||
+                        (p.Student != null && p.Student.BranchId == userBranchId)
+                    );
+                }
+
+                if (startDate.HasValue)
+                    paymentsQuery = paymentsQuery.Where(p => p.PaymentDate >= startDate.Value);
+
+                if (endDate.HasValue)
+                    paymentsQuery = paymentsQuery.Where(p => p.PaymentDate <= endDate.Value);
+
+                // Execute query first, then project on client side
+                var paymentsData = await paymentsQuery
+                    .OrderByDescending(p => p.PaymentDate)
+                    .ToListAsync();
+
+                var transactions = paymentsData.Select(p => new
+                {
+                    Id = p.Id,
+                    StudentName = p.Student?.FullName ?? p.CourseRegistration?.Student?.FullName ?? "غير محدد",
+                    CourseName = p.CourseRegistration?.Course?.Name ?? "غير محدد",
+                    Amount = p.Amount,
+                    PaymentMethod = p.PaymentMethod.ToString(),
+                    PaymentMethodArabic = GetPaymentMethodArabic(p.PaymentMethod),
+                    PaymentType = p.PaymentType.ToString(),
+                    PaymentTypeArabic = GetPaymentTypeArabic(p.PaymentType),
+                    PaymentDate = p.PaymentDate,
+                    ProcessedBy = p.ProcessedByUser?.FullName ?? "غير محدد",
+                    Notes = p.Notes,
+                    RegistrationId = p.CourseRegistrationId ?? 0,
+                    BranchName = p.CourseRegistration?.Course?.Branch?.Name ?? "غير محدد",
+                    TransactionType = "income",
+                    PaymentStatus = "paid",
+                    Category = "التدريب",
+                    Description = p.Notes ?? "دفعة تدريب",
+                    InvoiceUrl = $"/api/invoices/payment/{p.Id}"
+                }).ToList();
+
+                // Calculate totals
+                var totalIncome = transactions.Sum(t => t.Amount);
+                var totalTransactions = transactions.Count;
+
+                return Ok(new { 
+                    success = true, 
+                    data = transactions,
+                    totalIncome,
+                    totalTransactions,
+                    netBalance = totalIncome, // Only income, no expenses
+                    message = "بيانات المدفوعات الصحيحة فقط"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { 
+                    message = "حدث خطأ في الخادم", 
+                    error = ex.Message
+                });
             }
         }
 
@@ -815,6 +957,51 @@ namespace Api.Controllers
             }
         }
 
+        [HttpPost("clean-duplicate-expenses")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CleanDuplicateExpenses()
+        {
+            try
+            {
+                // Find and remove duplicate expense records that are income from course payments
+                var duplicateExpenses = await _context.Expenses
+                    .Where(e => e.Category == ExpenseCategory.Training && e.Amount > 0)
+                    .ToListAsync();
+
+                var removedCount = 0;
+                foreach (var expense in duplicateExpenses)
+                {
+                    // Check if there's a corresponding payment record
+                    var hasPayment = await _context.Payments
+                        .AnyAsync(p => p.Amount == expense.Amount && 
+                                      p.PaymentDate.Date == expense.ExpenseDate.Date &&
+                                      p.Notes.Contains("دفعة") || p.Notes.Contains("تسجيل"));
+
+                    if (hasPayment)
+                    {
+                        _context.Expenses.Remove(expense);
+                        removedCount++;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new { 
+                    success = true, 
+                    message = $"تم حذف {removedCount} سجل مصروف مكرر",
+                    removedCount = removedCount
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { 
+                    success = false, 
+                    message = "حدث خطأ في تنظيف البيانات المكررة", 
+                    error = ex.Message 
+                });
+            }
+        }
+
         [HttpPost("add-sample-data")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AddSampleData()
@@ -832,6 +1019,349 @@ namespace Api.Controllers
             }
         }
 #endif
+
+        [HttpGet("debug-payments")]
+        [Authorize(Policy = "AdminOrEmployee")]
+        public async Task<IActionResult> GetDebugPayments()
+        {
+            try
+            {
+                var userBranchId = int.Parse(User.FindFirst("BranchId")?.Value ?? "0");
+                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+
+                // Get all payments with full details
+                var payments = await _context.Payments
+                    .Include(p => p.Student)
+                    .Include(p => p.CourseRegistration)
+                        .ThenInclude(cr => cr.Course)
+                            .ThenInclude(c => c.Branch)
+                    .Include(p => p.ProcessedByUser)
+                    .Where(p => p.IsActive)
+                    .Select(p => new
+                    {
+                        p.Id,
+                        p.StudentId,
+                        p.CourseRegistrationId,
+                        p.BranchId,
+                        StudentName = p.Student != null ? p.Student.FullName : "No Student",
+                        CourseName = p.CourseRegistration != null && p.CourseRegistration.Course != null ? p.CourseRegistration.Course.Name : "No Course",
+                        BranchName = p.CourseRegistration != null && p.CourseRegistration.Course != null && p.CourseRegistration.Course.Branch != null ? p.CourseRegistration.Course.Branch.Name : "No Branch",
+                        p.Amount,
+                        p.PaymentMethod,
+                        p.PaymentType,
+                        p.PaymentDate,
+                        ProcessedBy = p.ProcessedByUser != null ? p.ProcessedByUser.FullName : "System",
+                        p.Notes,
+                        p.IsActive,
+                        p.CreatedAt
+                    })
+                    .OrderByDescending(p => p.CreatedAt)
+                    .ToListAsync();
+
+                // Get all expenses
+                var expenses = await _context.Expenses
+                    .Include(e => e.Branch)
+                    .Include(e => e.RequestedByUser)
+                    .Select(e => new
+                    {
+                        e.Id,
+                        e.Title,
+                        e.Description,
+                        e.Amount,
+                        e.Category,
+                        e.ExpenseDate,
+                        e.Status,
+                        e.BranchId,
+                        BranchName = e.Branch != null ? e.Branch.Name : "No Branch",
+                        RequestedBy = e.RequestedByUser != null ? e.RequestedByUser.FullName : "System",
+                        e.CreatedAt
+                    })
+                    .OrderByDescending(e => e.CreatedAt)
+                    .ToListAsync();
+
+                // Get course registrations with payments
+                var registrations = await _context.CourseRegistrations
+                    .Include(cr => cr.Student)
+                    .Include(cr => cr.Course)
+                        .ThenInclude(c => c.Branch)
+                    .Where(cr => cr.PaidAmount > 0)
+                    .Select(cr => new
+                    {
+                        cr.Id,
+                        cr.StudentId,
+                        cr.CourseId,
+                        StudentName = cr.Student != null ? cr.Student.FullName : "No Student",
+                        CourseName = cr.Course != null ? cr.Course.Name : "No Course",
+                        BranchName = cr.Course != null && cr.Course.Branch != null ? cr.Course.Branch.Name : "No Branch",
+                        cr.TotalAmount,
+                        cr.PaidAmount,
+                        cr.PaymentStatus,
+                        cr.PaymentMethod,
+                        cr.PaymentDate,
+                        cr.CreatedAt
+                    })
+                    .OrderByDescending(cr => cr.CreatedAt)
+                    .ToListAsync();
+
+                return Ok(new { 
+                    success = true, 
+                    userBranchId,
+                    userRole,
+                    totalPayments = payments.Count,
+                    totalExpensesCount = expenses.Count,
+                    totalRegistrations = registrations.Count,
+                    payments = payments.Take(10), // Show first 10 for debugging
+                    expenses = expenses.Take(10), // Show first 10 for debugging
+                    registrations = registrations.Take(10) // Show first 10 for debugging
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "حدث خطأ في الخادم", error = ex.Message });
+            }
+        }
+
+        [HttpGet("debug-simple")]
+        [Authorize(Policy = "AdminOrEmployee")]
+        public async Task<IActionResult> GetDebugSimple()
+        {
+            try
+            {
+                var userBranchId = int.Parse(User.FindFirst("BranchId")?.Value ?? "0");
+                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+                
+                // Test database connection
+                var paymentsCount = await _context.Payments.CountAsync();
+                var expensesCount = await _context.Expenses.CountAsync();
+                var studentsCount = await _context.Students.CountAsync();
+                
+                // Check payment data with student relationships
+                var paymentsWithStudents = await _context.Payments
+                    .Include(p => p.Student)
+                    .Include(p => p.CourseRegistration)
+                        .ThenInclude(cr => cr.Student)
+                    .Take(5)
+                    .Select(p => new
+                    {
+                        p.Id,
+                        p.StudentId,
+                        StudentName = p.Student != null ? p.Student.FullName : "No Student",
+                        CourseRegistrationId = p.CourseRegistrationId,
+                        CourseRegistrationStudentName = p.CourseRegistration != null && p.CourseRegistration.Student != null ? p.CourseRegistration.Student.FullName : "No Course Registration Student",
+                        p.Amount,
+                        p.PaymentDate
+                    })
+                    .ToListAsync();
+                
+                // Simple test - just return basic info
+                return Ok(new { 
+                    success = true, 
+                    userBranchId, 
+                    userRole,
+                    message = "Debug endpoint working",
+                    databaseStats = new {
+                        paymentsCount,
+                        expensesCount,
+                        studentsCount
+                    },
+                    samplePayments = paymentsWithStudents
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Debug error", error = ex.Message, stackTrace = ex.StackTrace });
+            }
+        }
+
+        [HttpGet("debug-all-transactions")]
+        [Authorize(Policy = "AdminOrEmployee")]
+        public async Task<IActionResult> GetDebugAllTransactions([FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                var userBranchId = int.Parse(User.FindFirst("BranchId")?.Value ?? "0");
+                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+
+                // Get all payments - fetch data first, then project
+                var paymentsQuery = _context.Payments
+                    .Include(p => p.Student)
+                    .Include(p => p.CourseRegistration)
+                        .ThenInclude(cr => cr.Student)
+                    .Include(p => p.CourseRegistration)
+                        .ThenInclude(cr => cr.Course)
+                            .ThenInclude(c => c.Branch)
+                    .Include(p => p.ProcessedByUser)
+                    .Where(p => p.IsActive);
+
+                // Filter by branch if not admin
+                if (userRole != "Admin")
+                {
+                    paymentsQuery = paymentsQuery.Where(p => 
+                        (p.CourseRegistration != null && p.CourseRegistration.Course != null && p.CourseRegistration.Course.BranchId == userBranchId) ||
+                        (p.Student != null && p.Student.BranchId == userBranchId)
+                    );
+                }
+
+                if (startDate.HasValue)
+                    paymentsQuery = paymentsQuery.Where(p => p.PaymentDate >= startDate.Value);
+
+                if (endDate.HasValue)
+                    paymentsQuery = paymentsQuery.Where(p => p.PaymentDate <= endDate.Value);
+
+                // Execute query first, then project on client side
+                var paymentsData = await paymentsQuery
+                    .OrderByDescending(p => p.PaymentDate)
+                    .ToListAsync();
+
+                var payments = paymentsData.Select(p => new
+                {
+                    Id = p.Id,
+                    StudentName = p.Student?.FullName ?? p.CourseRegistration?.Student?.FullName ?? string.Empty,
+                    CourseName = p.CourseRegistration?.Course?.Name ?? string.Empty,
+                    Amount = p.Amount,
+                    PaymentMethod = p.PaymentMethod.ToString(),
+                    PaymentMethodArabic = GetPaymentMethodArabic(p.PaymentMethod),
+                    PaymentType = p.PaymentType.ToString(),
+                    PaymentTypeArabic = GetPaymentTypeArabic(p.PaymentType),
+                    PaymentDate = p.PaymentDate,
+                    ProcessedBy = p.ProcessedByUser?.FullName ?? string.Empty,
+                    Notes = p.Notes,
+                    RegistrationId = p.CourseRegistrationId ?? 0,
+                    BranchName = p.CourseRegistration?.Course?.Branch?.Name ?? string.Empty,
+                    TransactionType = "income",
+                    PaymentStatus = "paid",
+                    Category = "التدريب",
+                    Description = p.Notes ?? "دفعة تدريب",
+                    InvoiceUrl = $"/api/invoices/payment/{p.Id}"
+                }).ToList();
+
+                // Get only actual expenses (not income records that duplicate payments)
+                var expensesQuery = _context.Expenses
+                    .Include(e => e.Branch)
+                    .Include(e => e.RequestedByUser)
+                    .Where(e => e.BranchId == userBranchId && 
+                               e.Category != ExpenseCategory.Training && // Exclude training income
+                               e.Amount < 0); // Only actual expenses (negative amounts)
+
+                if (startDate.HasValue)
+                    expensesQuery = expensesQuery.Where(e => e.ExpenseDate >= startDate.Value);
+
+                if (endDate.HasValue)
+                    expensesQuery = expensesQuery.Where(e => e.ExpenseDate <= endDate.Value);
+
+                // Execute query first, then project on client side
+                var expensesData = await expensesQuery
+                    .OrderByDescending(e => e.ExpenseDate)
+                    .ToListAsync();
+
+                var expenses = expensesData.Select(e => new
+                {
+                    Id = e.Id + 1000000, // Unique ID for expenses
+                    StudentName = string.Empty,
+                    CourseName = string.Empty,
+                    Amount = Math.Abs(e.Amount),
+                    PaymentMethod = e.PaymentMethod.ToString(),
+                    PaymentMethodArabic = GetPaymentMethodArabic(e.PaymentMethod),
+                    PaymentType = "Expense",
+                    PaymentTypeArabic = GetExpenseCategoryArabic(e.Category),
+                    PaymentDate = e.ExpenseDate,
+                    ProcessedBy = e.RequestedByUser?.FullName ?? string.Empty,
+                    Notes = e.Description,
+                    RegistrationId = 0,
+                    BranchName = e.Branch?.Name ?? string.Empty,
+                    TransactionType = e.Amount >= 0 ? "income" : "expense",
+                    PaymentStatus = e.Status == ExpenseStatus.Paid ? "paid" : "pending",
+                    Category = GetExpenseCategoryArabic(e.Category),
+                    Description = e.Description,
+                    InvoiceUrl = $"/api/invoices/expense/{e.Id}"
+                }).ToList();
+
+                // Combine both results
+                var allTransactions = payments.Concat(expenses)
+                    .OrderByDescending(t => t.PaymentDate)
+                    .ToList();
+
+                // Calculate totals - only from actual payments
+                var totalIncome = payments.Sum(p => p.Amount);
+                var totalExpenses = expenses.Sum(e => e.Amount);
+
+                return Ok(new { 
+                    success = true, 
+                    userBranchId,
+                    userRole,
+                    totalPayments = payments.Count,
+                    totalExpensesCount = expenses.Count,
+                    totalTransactions = allTransactions.Count,
+                    totalIncome,
+                    totalExpenses,
+                    netBalance = totalIncome - totalExpenses,
+                    payments = payments.Take(5), // Show first 5 for debugging
+                    expenses = expenses.Take(5), // Show first 5 for debugging
+                    allTransactions = allTransactions.Take(10) // Show first 10 for debugging
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "حدث خطأ في الخادم", error = ex.Message });
+            }
+        }
+
+        [HttpPost("test-create-payment")]
+        [Authorize(Policy = "AdminOrEmployee")]
+        public async Task<IActionResult> TestCreatePayment()
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var userBranchId = int.Parse(User.FindFirst("BranchId")?.Value ?? "0");
+
+                // Find a course registration to test with
+                var registration = await _context.CourseRegistrations
+                    .Include(cr => cr.Student)
+                    .Include(cr => cr.Course)
+                    .FirstOrDefaultAsync(cr => cr.PaidAmount > 0);
+
+                if (registration == null)
+                {
+                    return BadRequest(new { message = "لا توجد تسجيلات كورسات للاختبار" });
+                }
+
+                // Create a test payment record
+                var testPayment = new Payment
+                {
+                    StudentId = registration.StudentId,
+                    CourseRegistrationId = registration.Id,
+                    BranchId = registration.Course.BranchId,
+                    Amount = 100, // Test amount
+                    PaymentMethod = PaymentMethod.Cash,
+                    PaymentType = PaymentType.CourseFee,
+                    PaymentSource = PaymentSource.CourseFee,
+                    PaymentDate = DateTime.UtcNow,
+                    ProcessedByUserId = userId,
+                    Notes = "اختبار إنشاء سجل دفع",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Payments.Add(testPayment);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { 
+                    success = true, 
+                    message = "تم إنشاء سجل دفع تجريبي بنجاح",
+                    paymentId = testPayment.Id,
+                    studentId = testPayment.StudentId,
+                    courseRegistrationId = testPayment.CourseRegistrationId,
+                    branchId = testPayment.BranchId,
+                    amount = testPayment.Amount,
+                    userBranchId = userBranchId
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "حدث خطأ في الخادم", error = ex.Message });
+            }
+        }
 
         [HttpGet("statistics")]
         public async Task<IActionResult> GetPaymentStatistics([FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
@@ -1063,5 +1593,6 @@ namespace Api.Controllers
         public double Progress { get; set; }
         public string? CertificateUrl { get; set; }
         public int? ExamScore { get; set; }
+        public string? DriveLink { get; set; }
     }
 }

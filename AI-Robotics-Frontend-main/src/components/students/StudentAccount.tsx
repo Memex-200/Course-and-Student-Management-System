@@ -17,11 +17,11 @@ const StudentAccount: React.FC = () => {
     parentEmail: "",
     emergencyContact: "",
     emergencyPhone: "",
-    joinDate: "2024-01-01",
-    totalCourses: 3,
-    completedCourses: 1,
-    currentCourses: 2,
-    certificates: 1,
+    joinDate: "",
+    totalCourses: 0,
+    completedCourses: 0,
+    currentCourses: 0,
+    certificates: 0,
   });
 
   // Reset form data when user changes

@@ -23,7 +23,6 @@ import { Globe } from "lucide-react";
 import { Cog } from "lucide-react";
 import { Atom } from "lucide-react";
 import { Binary } from "lucide-react";
-import { Chip } from "lucide-react";
 import { BookOpen } from "lucide-react";
 import { Facebook } from "lucide-react";
 import { Instagram } from "lucide-react";
@@ -180,14 +179,16 @@ const LandingPage: React.FC = () => {
 
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
                 {/* قم بإزالة أو إخفاء أي عنصر فيه to="/register" أو نص التسجيل الآن أو زر التسجيل */}
-                <Link
-                  to="/register"
+                <a
+                  href="https://docs.google.com/forms/d/e/1FAIpQLSd75BEoOejhJ5beBIQEpuEf7lNNeWTS5DegIEoNfa9D6DK0bQ/viewform"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="group relative bg-gradient-to-r from-primary-500 via-accent-500 to-electric-500 text-white px-8 py-4 rounded-xl hover:from-primary-400 hover:via-accent-400 hover:to-electric-400 transition-all duration-300 flex items-center justify-center space-x-2 rtl:space-x-reverse text-lg font-medium glow-blue hover:glow-purple transform hover:scale-105"
                 >
                   <Rocket className="w-6 h-6 group-hover:animate-bounce-gentle" />
                   <span>سجل الآن</span>
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
+                </a>
 
                 <button
                   onClick={() => {
@@ -344,7 +345,7 @@ const LandingPage: React.FC = () => {
 
               {/* Orbiting elements */}
               <div className="absolute -inset-4">
-                {[Zap, Atom, Binary, Chip].map((Icon, index) => (
+                {[Zap, Atom, Binary, Cpu].map((Icon, index) => (
                   <div
                     key={index}
                     className="absolute w-8 h-8 text-primary-400 animate-rotate-slow"
@@ -361,6 +362,19 @@ const LandingPage: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* About Academy Section */}
+      <section id="about" className="py-16 relative">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl font-bold text-white mb-6 holographic">
+            عن الأكاديمية
+          </h2>
+          <p className="text-xl leading-relaxed text-gray-200 bg-secondary-800/40 border border-primary-500/20 rounded-2xl p-6 mx-auto">
+            أهلاً بيك في AI ROBOTICS 👋 ... معتمدون رسميًا من STEM.org العالمية
+            ✨
+          </p>
         </div>
       </section>
 
@@ -423,165 +437,187 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Enhanced Courses Section */}
+      {/* Courses By Age Section */}
       <section id="courses" className="py-20 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <div className="inline-block bg-gradient-to-r from-primary-500/20 to-accent-500/20 backdrop-blur-sm px-6 py-3 rounded-full mb-6 border border-primary-500/30">
               <span className="text-primary-300 font-medium flex items-center space-x-2 rtl:space-x-reverse">
                 <Sparkles className="w-5 h-5 animate-wiggle" />
-                <span>برامجنا التعليمية</span>
+                <span>فئات الكورسات حسب العمر</span>
                 <Sparkles className="w-5 h-5 animate-wiggle" />
               </span>
             </div>
             <h2 className="text-5xl font-bold text-white mb-4 holographic">
-              برامجنا التعليمية
+              كورسات مقسمة حسب الفئة العمرية
             </h2>
-            <p className="text-xl text-gray-300">
-              تعليم متدرج يناسب جميع الأعمار والمستويات مع أحدث التقنيات
-            </p>
+            <p className="text-xl text-gray-300">12 محاضرة (30 ساعة) لكل فئة</p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Ages 4-6 */}
-            <div className="group relative bg-gradient-to-br from-secondary-800/50 to-secondary-900/50 backdrop-blur-lg rounded-3xl shadow-2xl p-8 hover:from-secondary-700/50 hover:to-secondary-800/50 transition-all duration-500 border border-primary-500/20 hover:border-primary-400/40 transform hover:scale-105 glow-blue">
+          <div className="grid lg:grid-cols-4 gap-8">
+            {/* 4–6 years */}
+            <div className="group relative bg-gradient-to-br from-secondary-800/50 to-secondary-900/50 backdrop-blur-lg rounded-3xl shadow-2xl p-8 hover:from-secondary-700/50 hover:to-secondary-800/50 transition-all duration-500 border border-primary-500/20 hover:border-primary-400/40 transform hover:scale-105 glow-blue order-3 lg:order-3">
               <div className="absolute inset-0 bg-gradient-to-br from-primary-500/5 to-accent-500/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-6">
                   <div className="w-20 h-20 bg-gradient-to-br from-primary-400 to-primary-600 rounded-2xl flex items-center justify-center group-hover:animate-bounce-gentle glow-blue">
-                    <Star className="w-10 h-10 text-white animate-float" />
+                    <Star className="w-10 h-10 text-white" />
                   </div>
                   <AnimatedRobot size="w-8 h-8" />
                 </div>
-
-                <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-primary-300 transition-colors">
-                  المرحلة التأسيسية
+                <h3 className="text-2xl font-bold text-white mb-2">
+                  4–6 سنوات
                 </h3>
-                <p className="text-primary-300 mb-4 font-medium">
-                  للأطفال من سن 4-6 سنوات
-                </p>
-
-                <ul className="space-y-3 mb-6">
-                  {[
-                    "أساسيات الروبوتيكس والتفكير المنطقي",
-                    "STEM Education المتقدم",
-                    "أدوات تعليمية عالمية حديثة",
-                  ].map((item, index) => (
-                    <li
-                      key={index}
-                      className="flex items-center text-gray-300 group-hover:text-gray-200 transition-colors"
-                    >
-                      <div className="w-3 h-3 bg-gradient-to-r from-primary-400 to-accent-400 rounded-full ml-3 animate-pulse-glow"></div>
-                      {item}
-                    </li>
-                  ))}
+                <p className="text-primary-300 mb-4 font-medium">Wahlesboot</p>
+                <ul className="space-y-2 mb-6 text-gray-300">
+                  <li>12 محاضرة (30 ساعة)</li>
                 </ul>
-
-                <div className="text-3xl font-bold text-primary-400 mb-4 tech-font group-hover:animate-neon-pulse">
-                  300 ج.م/شهر
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  <span className="text-gray-300 line-through text-xl">
+                    800 ج
+                  </span>
+                  <span className="text-3xl font-extrabold text-primary-300">
+                    600 ج
+                  </span>
+                  <span className="text-xs px-2 py-1 rounded-full bg-primary-500/20 border border-primary-400/40 text-primary-200">
+                    خصم 25%
+                  </span>
                 </div>
-
-                <button className="w-full bg-gradient-to-r from-primary-500 to-primary-600 text-white py-3 rounded-xl hover:from-primary-400 hover:to-primary-500 transition-all duration-300 font-medium group-hover:glow-blue">
-                  اشترك الآن
-                </button>
+                <a
+                  href="https://docs.google.com/forms/d/e/1FAIpQLSd75BEoOejhJ5beBIQEpuEf7lNNeWTS5DegIEoNfa9D6DK0bQ/viewform"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-block text-center bg-gradient-to-r from-primary-500 to-primary-600 text-white py-3 rounded-xl hover:from-primary-400 hover:to-primary-500 transition-all duration-300 font-medium"
+                >
+                  انضم الآن
+                </a>
               </div>
             </div>
 
-            {/* Ages 7-12 - Featured */}
-            <div className="group relative bg-gradient-to-br from-accent-800/50 to-accent-900/50 backdrop-blur-lg rounded-3xl shadow-2xl p-8 hover:from-accent-700/50 hover:to-accent-800/50 transition-all duration-500 border-2 border-accent-400/40 transform hover:scale-105 glow-purple">
+            {/* 7–12 years */}
+            <div className="group relative bg-gradient-to-br from-accent-800/50 to-accent-900/50 backdrop-blur-lg rounded-3xl shadow-2xl p-8 hover:from-accent-700/50 hover:to-accent-800/50 transition-all duration-500 border-2 border-accent-400/40 transform hover:scale-105 glow-purple order-2 lg:order-2">
               <div className="absolute inset-0 bg-gradient-to-br from-accent-500/10 to-electric-500/10 rounded-3xl"></div>
-
-              {/* Featured badge */}
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <div className="bg-gradient-to-r from-accent-400 to-electric-400 text-white px-6 py-2 rounded-full text-sm font-bold animate-bounce-gentle">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                <div className="bg-gradient-to-r from-accent-400 to-electric-400 text-white px-6 py-2 rounded-full text-sm font-bold">
                   ⭐ الأكثر شعبية
                 </div>
               </div>
-
               <div className="relative z-10 pt-4">
                 <div className="flex items-center justify-between mb-6">
-                  <div className="w-20 h-20 bg-gradient-to-br from-accent-400 to-electric-500 rounded-2xl flex items-center justify-center group-hover:animate-bounce-gentle glow-purple">
-                    <Users className="w-10 h-10 text-white animate-float" />
+                  <div className="w-20 h-20 bg-gradient-to-br from-accent-400 to-electric-500 rounded-2xl flex items-center justify-center glow-purple">
+                    <Users className="w-10 h-10 text-white" />
                   </div>
                   <AnimatedRobot size="w-8 h-8" />
                 </div>
-
-                <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-accent-300 transition-colors">
-                  المرحلة الاستكشافية
+                <h3 className="text-2xl font-bold text-white mb-2">
+                  7–12 سنوات
                 </h3>
                 <p className="text-accent-300 mb-4 font-medium">
-                  للأطفال من سن 7-12 سنة
+                  Pictoblox + ZMROBO & AI kits
                 </p>
-
-                <ul className="space-y-3 mb-6">
-                  {[
-                    "الروبوتيكس والذكاء الاصطناعي المتقدم",
-                    "أساسيات الكمبيوتر والبرمجة التفاعلية",
-                    "الهندسة الكهربية والميكاترونيكس",
-                  ].map((item, index) => (
-                    <li
-                      key={index}
-                      className="flex items-center text-gray-300 group-hover:text-gray-200 transition-colors"
-                    >
-                      <div className="w-3 h-3 bg-gradient-to-r from-accent-400 to-electric-400 rounded-full ml-3 animate-pulse-glow"></div>
-                      {item}
-                    </li>
-                  ))}
+                <ul className="space-y-2 mb-6 text-gray-300">
+                  <li>12 محاضرة (30 ساعة)</li>
                 </ul>
-
-                <div className="text-3xl font-bold text-accent-400 mb-4 tech-font group-hover:animate-neon-pulse">
-                  500 ج.م/شهر
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  <span className="text-gray-300 line-through text-xl">
+                    800 ج
+                  </span>
+                  <span className="text-3xl font-extrabold text-accent-300">
+                    600 ج
+                  </span>
+                  <span className="text-xs px-2 py-1 rounded-full bg-accent-500/20 border border-accent-400/40 text-accent-100">
+                    خصم 25%
+                  </span>
                 </div>
-
-                <button className="w-full bg-gradient-to-r from-accent-500 to-electric-500 text-white py-3 rounded-xl hover:from-accent-400 hover:to-electric-400 transition-all duration-300 font-medium group-hover:glow-purple">
-                  اشترك الآن
-                </button>
+                <a
+                  href="https://docs.google.com/forms/d/e/1FAIpQLSd75BEoOejhJ5beBIQEpuEf7lNNeWTS5DegIEoNfa9D6DK0bQ/viewform"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-block text-center bg-gradient-to-r from-accent-500 to-electric-500 text-white py-3 rounded-xl hover:from-accent-400 hover:to-electric-400 transition-all duration-300 font-medium"
+                >
+                  انضم الآن
+                </a>
               </div>
             </div>
 
-            {/* Ages 13-17 */}
-            <div className="group relative bg-gradient-to-br from-electric-800/50 to-electric-900/50 backdrop-blur-lg rounded-3xl shadow-2xl p-8 hover:from-electric-700/50 hover:to-electric-800/50 transition-all duration-500 border border-electric-500/20 hover:border-electric-400/40 transform hover:scale-105 glow-green">
+            {/* 13–17 years */}
+            <div className="group relative bg-gradient-to-br from-electric-800/50 to-electric-900/50 backdrop-blur-lg rounded-3xl shadow-2xl p-8 hover:from-electric-700/50 hover:to-electric-800/50 transition-all duration-500 border border-electric-500/20 hover:border-electric-400/40 transform hover:scale-105 glow-green order-1 lg:order-1">
               <div className="absolute inset-0 bg-gradient-to-br from-electric-500/5 to-warning-500/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-6">
-                  <div className="w-20 h-20 bg-gradient-to-br from-electric-400 to-warning-500 rounded-2xl flex items-center justify-center group-hover:animate-bounce-gentle glow-green">
-                    <Award className="w-10 h-10 text-white animate-float" />
+                  <div className="w-20 h-20 bg-gradient-to-br from-electric-400 to-warning-500 rounded-2xl flex items-center justify-center glow-green">
+                    <Award className="w-10 h-10 text-white" />
                   </div>
                   <AnimatedRobot size="w-8 h-8" />
                 </div>
-
-                <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-electric-300 transition-colors">
-                  المرحلة المتقدمة
+                <h3 className="text-2xl font-bold text-white mb-2">
+                  13–17 سنة
                 </h3>
                 <p className="text-electric-300 mb-4 font-medium">
-                  للشباب من سن 13-17 سنة
+                  Arduino + Python + AI projects + 3D
                 </p>
-
-                <ul className="space-y-3 mb-6">
-                  {[
-                    "Python و C++ المتقدمة والاحترافية",
-                    "مشاريع الروبوتات المعقدة والذكية",
-                    "الذكاء الاصطناعي التطبيقي والعملي",
-                  ].map((item, index) => (
-                    <li
-                      key={index}
-                      className="flex items-center text-gray-300 group-hover:text-gray-200 transition-colors"
-                    >
-                      <div className="w-3 h-3 bg-gradient-to-r from-electric-400 to-warning-400 rounded-full ml-3 animate-pulse-glow"></div>
-                      {item}
-                    </li>
-                  ))}
+                <ul className="space-y-2 mb-6 text-gray-300">
+                  <li>12 محاضرة (30 ساعة)</li>
                 </ul>
-
-                <div className="text-3xl font-bold text-electric-400 mb-4 tech-font group-hover:animate-neon-pulse">
-                  700 ج.م/شهر
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  <span className="text-gray-300 line-through text-xl">
+                    800 ج
+                  </span>
+                  <span className="text-3xl font-extrabold text-electric-300">
+                    600 ج
+                  </span>
+                  <span className="text-xs px-2 py-1 rounded-full bg-electric-500/20 border border-electric-400/40 text-electric-100">
+                    خصم 25%
+                  </span>
                 </div>
+                <a
+                  href="https://docs.google.com/forms/d/e/1FAIpQLSd75BEoOejhJ5beBIQEpuEf7lNNeWTS5DegIEoNfa9D6DK0bQ/viewform"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-block text-center bg-gradient-to-r from-electric-500 to-warning-500 text-white py-3 rounded-xl hover:from-electric-400 hover:to-warning-400 transition-all duration-300 font-medium"
+                >
+                  انضم الآن
+                </a>
+              </div>
+            </div>
 
-                <button className="w-full bg-gradient-to-r from-electric-500 to-warning-500 text-white py-3 rounded-xl hover:from-electric-400 hover:to-warning-400 transition-all duration-300 font-medium group-hover:glow-green">
-                  اشترك الآن
-                </button>
+            {/* Featured: Full Term - Programming & AI */}
+            <div className="group relative bg-gradient-to-br from-primary-800/40 to-accent-900/40 backdrop-blur-lg rounded-3xl shadow-2xl p-8 hover:from-primary-700/40 hover:to-accent-800/40 transition-all duration-500 border-2 border-primary-400/40 transform hover:scale-105 glow-blue order-4 lg:order-4">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 to-accent-500/10 rounded-3xl"></div>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="w-20 h-20 bg-gradient-to-br from-primary-400 to-accent-500 rounded-2xl flex items-center justify-center glow-blue">
+                    <BookOpen className="w-10 h-10 text-white" />
+                  </div>
+                  <AnimatedRobot size="w-8 h-8" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-2">
+                  ترم كامل: برمجة وذكاء اصطناعي
+                </h3>
+                <p className="text-primary-200 mb-4 font-medium">
+                  مناهج ICT المدرسية + STEM المعتمدة
+                </p>
+                <ul className="space-y-2 mb-6 text-gray-300">
+                  <li>محاضرة واحدة أسبوعياً</li>
+                  <li>مشروعات عملية وروبوتات تعليمية</li>
+                  <li>مستويات: ابتدائي • إعدادي • ثانوي</li>
+                </ul>
+                <div className="flex items-center justify-center gap-3 mb-6">
+                  <span className="text-3xl font-extrabold text-primary-300">
+                    800 ج
+                  </span>
+                  <span className="text-xs px-2 py-1 rounded-full bg-primary-500/20 border border-primary-400/40 text-primary-200">
+                    ترم كامل
+                  </span>
+                </div>
+                <a
+                  href="https://docs.google.com/forms/d/e/1FAIpQLSd75BEoOejhJ5beBIQEpuEf7lNNeWTS5DegIEoNfa9D6DK0bQ/viewform"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-block text-center bg-gradient-to-r from-primary-500 to-accent-500 text-white py-3 rounded-xl hover:from-primary-400 hover:to-accent-400 transition-all duration-300 font-medium"
+                >
+                  سجل الآن
+                </a>
               </div>
             </div>
           </div>
@@ -736,16 +772,14 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Enhanced Branches Section */}
+      {/* Branches Section */}
       <section className="py-20 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-5xl font-bold text-white mb-4 holographic">
-              فروعنا التقنية
+              فروع الأكاديمية
             </h2>
-            <p className="text-xl text-gray-300">
-              نخدمك في موقعين استراتيجيين بأحدث التقنيات
-            </p>
+            <p className="text-xl text-gray-300">نخدمك في فرعين</p>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-12">
@@ -758,10 +792,10 @@ const LandingPage: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-2xl font-bold text-white group-hover:text-primary-300 transition-colors">
-                      فرع أسيوط
+                      أسيوط (الرئيسي)
                     </h3>
                     <p className="text-primary-300 font-medium">
-                      الفرع الرئيسي المتكامل
+                      فريال – برج عمر أفندي – أسيوط
                     </p>
                   </div>
                   <AnimatedRobot className="mr-auto" />
@@ -772,7 +806,9 @@ const LandingPage: React.FC = () => {
                     <MapPin className="w-5 h-5 text-primary-400 mt-1 animate-bounce-gentle" />
                     <div>
                       <p className="font-medium text-white">العنوان</p>
-                      <p className="text-gray-300">شارع الجمهورية، أسيوط</p>
+                      <p className="text-gray-300">
+                        فريال – برج عمر أفندي – أسيوط
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-3 rtl:space-x-reverse">
@@ -822,10 +858,10 @@ const LandingPage: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-2xl font-bold text-white group-hover:text-electric-300 transition-colors">
-                      فرع أبو تيج
+                      أبوتيج
                     </h3>
                     <p className="text-electric-300 font-medium">
-                      التخصص في التعليم البرمجي
+                      شارع مدرسة الراهبات
                     </p>
                   </div>
                   <AnimatedRobot className="mr-auto" />
@@ -836,7 +872,7 @@ const LandingPage: React.FC = () => {
                     <MapPin className="w-5 h-5 text-electric-400 mt-1 animate-bounce-gentle" />
                     <div>
                       <p className="font-medium text-white">العنوان</p>
-                      <p className="text-gray-300">شارع الجامعة، أبو تيج</p>
+                      <p className="text-gray-300">شارع مدرسة الراهبات</p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-3 rtl:space-x-reverse">
@@ -896,14 +932,16 @@ const LandingPage: React.FC = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-6 justify-center mb-12">
-            <Link
-              to="/register"
+            <a
+              href="https://docs.google.com/forms/d/e/1FAIpQLSd75BEoOejhJ5beBIQEpuEf7lNNeWTS5DegIEoNfa9D6DK0bQ/viewform"
+              target="_blank"
+              rel="noopener noreferrer"
               className="group relative bg-gradient-to-r from-primary-500 via-accent-500 to-electric-500 text-white px-10 py-5 rounded-2xl hover:from-primary-400 hover:via-accent-400 hover:to-electric-400 transition-all duration-300 font-medium inline-flex items-center justify-center space-x-3 rtl:space-x-reverse text-lg glow-blue hover:glow-purple transform hover:scale-105"
             >
               <Rocket className="w-6 h-6 group-hover:animate-bounce-gentle" />
               <span>التسجيل الآن</span>
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
+            </a>
 
             <a
               href="tel:01040311505"
@@ -960,19 +998,35 @@ const LandingPage: React.FC = () => {
               </h4>
               <ul className="space-y-3">
                 {[
-                  { label: "الكورسات", href: "#courses" },
-                  { label: "دخول النظام", href: "/login" },
-                  { label: "التسجيل", href: "/register" },
-                  { label: "من نحن", href: "#about" },
+                  { label: "الكورسات", href: "#courses", external: false },
+                  { label: "دخول النظام", href: "/login", external: false },
+                  {
+                    label: "التسجيل",
+                    href: "https://docs.google.com/forms/d/e/1FAIpQLSd75BEoOejhJ5beBIQEpuEf7lNNeWTS5DegIEoNfa9D6DK0bQ/viewform",
+                    external: true,
+                  },
+                  { label: "من نحن", href: "#about", external: false },
                 ].map((link, index) => (
                   <li key={index}>
-                    <Link
-                      to={link.href}
-                      className="text-gray-400 hover:text-primary-300 transition-colors flex items-center space-x-2 rtl:space-x-reverse group"
-                    >
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      <span>{link.label}</span>
-                    </Link>
+                    {link.external ? (
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-gray-400 hover:text-primary-300 transition-colors flex items-center space-x-2 rtl:space-x-reverse group"
+                      >
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        <span>{link.label}</span>
+                      </a>
+                    ) : (
+                      <Link
+                        to={link.href}
+                        className="text-gray-400 hover:text-primary-300 transition-colors flex items-center space-x-2 rtl:space-x-reverse group"
+                      >
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        <span>{link.label}</span>
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>

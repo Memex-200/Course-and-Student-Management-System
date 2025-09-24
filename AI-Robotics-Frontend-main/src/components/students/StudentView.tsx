@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { studentsAPI } from '../../lib/api';
-import { Student } from '../../types';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { studentsAPI } from "../../lib/api";
+import { Student } from "../../types";
 import {
   ArrowRight,
   User,
@@ -11,10 +11,10 @@ import {
   Calendar,
   GraduationCap,
   Edit,
-  Plus
-} from 'lucide-react';
-import toast from 'react-hot-toast';
-import { Link } from 'react-router-dom';
+  Plus,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import { Link } from "react-router-dom";
 
 // Course Registration Modal Component
 const CourseRegistrationModal: React.FC<{
@@ -27,11 +27,11 @@ const CourseRegistrationModal: React.FC<{
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    courseId: '',
+    courseId: "",
     totalAmount: 0,
     paidAmount: 0, // يبدأ بصفر دائماً
     paymentMethod: 1,
-    notes: ''
+    notes: "",
   });
 
   useEffect(() => {
@@ -42,19 +42,19 @@ const CourseRegistrationModal: React.FC<{
 
   const fetchCourses = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/courses', {
+      const token = localStorage.getItem("token");
+      const response = await fetch("/api/courses", {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
       const data = await response.json();
       if (data.success) {
         setCourses(data.data);
       }
     } catch (error) {
-      console.error('Error fetching courses:', error);
-      toast.error('خطأ في تحميل الكورسات');
+      console.error("Error fetching courses:", error);
+      toast.error("خطأ في تحميل الكورسات");
     }
   };
 
@@ -63,63 +63,66 @@ const CourseRegistrationModal: React.FC<{
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/students/${studentId}/register-course`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          courseId: parseInt(formData.courseId),
-          totalAmount: formData.totalAmount,
-          paidAmount: formData.paidAmount,
-          paymentMethod: formData.paymentMethod,
-          notes: formData.notes
-        })
-      });
+      const response = await fetch(
+        `/api/students/${studentId}/register-course`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            courseId: parseInt(formData.courseId),
+            totalAmount: formData.totalAmount,
+            paidAmount: formData.paidAmount,
+            paymentMethod: formData.paymentMethod,
+            notes: formData.notes,
+          }),
+        }
+      );
 
       const data = await response.json();
 
       if (response.ok) {
-        console.log('Success response received:', response.status);
-        console.log('Response data:', data);
-        
+        console.log("Success response received:", response.status);
+        console.log("Response data:", data);
+
         // استخدام إعدادات صريحة للون الأخضر
-        toast.success('تم تسجيل الطالب في الكورس بنجاح', {
-          className: 'toast-success-green',
+        toast.success("تم تسجيل الطالب في الكورس بنجاح", {
+          className: "toast-success-green",
           style: {
-            background: '#10B981',
-            color: '#ffffff',
-            border: 'none',
-            fontSize: '16px',
-            fontWeight: '500',
-            direction: 'rtl',
+            background: "#10B981",
+            color: "#ffffff",
+            border: "none",
+            fontSize: "16px",
+            fontWeight: "500",
+            direction: "rtl",
           },
           duration: 4000,
         });
-        console.log('Toast success called');
+        console.log("Toast success called");
         onClose();
         // Refresh the page to show updated data
         window.location.reload();
       } else {
-        toast.error(data.message || 'حدث خطأ في تسجيل الطالب');
+        toast.error(data.message || "حدث خطأ في تسجيل الطالب");
       }
     } catch (error) {
-      console.error('Error registering student:', error);
-      toast.error('حدث خطأ في تسجيل الطالب');
+      console.error("Error registering student:", error);
+      toast.error("حدث خطأ في تسجيل الطالب");
     } finally {
       setLoading(false);
     }
   };
 
   const handleCourseChange = (courseId: string) => {
-    const course = courses.find(c => c.id === parseInt(courseId));
+    const course = courses.find((c) => c.id === parseInt(courseId));
     setSelectedCourse(course);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       courseId,
       totalAmount: course?.price || 0,
-      paidAmount: 0 // دائماً صفر عند اختيار كورس جديد
+      paidAmount: 0, // دائماً صفر عند اختيار كورس جديد
     }));
   };
 
@@ -129,7 +132,9 @@ const CourseRegistrationModal: React.FC<{
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">تسجيل طالب في كورس</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            تسجيل طالب في كورس
+          </h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -168,23 +173,34 @@ const CourseRegistrationModal: React.FC<{
           {/* Course Details */}
           {selectedCourse && (
             <div className="p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-2">تفاصيل الكورس</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">
+                تفاصيل الكورس
+              </h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-600">الاسم:</span>
-                  <span className="mr-2 font-medium">{selectedCourse.name}</span>
+                  <span className="mr-2 font-medium">
+                    {selectedCourse.name}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-600">السعر:</span>
-                  <span className="mr-2 font-medium">{selectedCourse.price} جنيه</span>
+                  <span className="mr-2 font-medium">
+                    {selectedCourse.price} جنيه
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-600">عدد الجلسات:</span>
-                  <span className="mr-2 font-medium">{selectedCourse.sessionsCount}</span>
+                  <span className="mr-2 font-medium">
+                    {selectedCourse.sessionsCount}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-600">الطلاب الحاليين:</span>
-                  <span className="mr-2 font-medium">{selectedCourse.currentStudents}/{selectedCourse.maxStudents}</span>
+                  <span className="mr-2 font-medium">
+                    {selectedCourse.currentStudents}/
+                    {selectedCourse.maxStudents}
+                  </span>
                 </div>
               </div>
             </div>
@@ -199,7 +215,12 @@ const CourseRegistrationModal: React.FC<{
               <input
                 type="number"
                 value={formData.totalAmount}
-                onChange={(e) => setFormData(prev => ({ ...prev, totalAmount: parseFloat(e.target.value) || 0 }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    totalAmount: parseFloat(e.target.value) || 0,
+                  }))
+                }
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 min="0"
                 step="0.01"
@@ -213,7 +234,12 @@ const CourseRegistrationModal: React.FC<{
               <input
                 type="number"
                 value={formData.paidAmount}
-                onChange={(e) => setFormData(prev => ({ ...prev, paidAmount: parseFloat(e.target.value) || 0 }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    paidAmount: parseFloat(e.target.value) || 0,
+                  }))
+                }
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 min="0"
                 step="0.01"
@@ -228,7 +254,12 @@ const CourseRegistrationModal: React.FC<{
             </label>
             <select
               value={formData.paymentMethod}
-              onChange={(e) => setFormData(prev => ({ ...prev, paymentMethod: parseInt(e.target.value) }))}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  paymentMethod: parseInt(e.target.value),
+                }))
+              }
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               required
             >
@@ -244,7 +275,9 @@ const CourseRegistrationModal: React.FC<{
             </label>
             <textarea
               value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, notes: e.target.value }))
+              }
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               rows={3}
               placeholder="ملاحظات إضافية..."
@@ -255,7 +288,8 @@ const CourseRegistrationModal: React.FC<{
           {formData.totalAmount > 0 && (
             <div className="p-4 bg-yellow-50 rounded-lg">
               <p className="text-yellow-800">
-                <strong>المبلغ المتبقي:</strong> {formData.totalAmount - formData.paidAmount} جنيه
+                <strong>المبلغ المتبقي:</strong>{" "}
+                {formData.totalAmount - formData.paidAmount} جنيه
               </p>
             </div>
           )}
@@ -303,11 +337,13 @@ const StudentView: React.FC = () => {
     const fetchStudent = async () => {
       try {
         const response = await studentsAPI.getById(parseInt(id!));
-        setStudent(response.data);
+        const apiResult = response.data as any;
+        // API responses are shaped as { success, message, data }
+        setStudent(apiResult.data ?? apiResult);
       } catch (error) {
-        console.error('Error fetching student:', error);
-        toast.error('خطأ في تحميل بيانات الطالب');
-        navigate('/students');
+        console.error("Error fetching student:", error);
+        toast.error("خطأ في تحميل بيانات الطالب");
+        navigate("/students");
       } finally {
         setLoading(false);
       }
@@ -334,7 +370,7 @@ const StudentView: React.FC = () => {
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-4 rtl:space-x-reverse">
           <button
-            onClick={() => navigate('/students')}
+            onClick={() => navigate("/students")}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowRight className="w-5 h-5" />
@@ -368,10 +404,12 @@ const StudentView: React.FC = () => {
           <User className="w-5 h-5 ml-2 text-blue-600" />
           المعلومات الشخصية
         </h2>
-        
+
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <label className="text-sm font-medium text-gray-500">الاسم الكامل</label>
+            <label className="text-sm font-medium text-gray-500">
+              الاسم الكامل
+            </label>
             <p className="mt-1 text-gray-900">{student.fullName}</p>
           </div>
 
@@ -382,11 +420,15 @@ const StudentView: React.FC = () => {
 
           <div>
             <label className="text-sm font-medium text-gray-500">الجنس</label>
-            <p className="mt-1 text-gray-900">{student.gender === 'Male' ? 'ذكر' : 'أنثى'}</p>
+            <p className="mt-1 text-gray-900">
+              {student.gender === "Male" ? "ذكر" : "أنثى"}
+            </p>
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-500">رقم الهاتف</label>
+            <label className="text-sm font-medium text-gray-500">
+              رقم الهاتف
+            </label>
             <p className="mt-1 text-gray-900 flex items-center">
               <Phone className="w-4 h-4 ml-1 text-gray-400" />
               {student.phone}
@@ -395,7 +437,9 @@ const StudentView: React.FC = () => {
 
           {student.email && (
             <div>
-              <label className="text-sm font-medium text-gray-500">البريد الإلكتروني</label>
+              <label className="text-sm font-medium text-gray-500">
+                البريد الإلكتروني
+              </label>
               <p className="mt-1 text-gray-900 flex items-center">
                 <Mail className="w-4 h-4 ml-1 text-gray-400" />
                 {student.email}
@@ -405,7 +449,9 @@ const StudentView: React.FC = () => {
 
           {student.address && (
             <div className="md:col-span-2">
-              <label className="text-sm font-medium text-gray-500">العنوان</label>
+              <label className="text-sm font-medium text-gray-500">
+                العنوان
+              </label>
               <p className="mt-1 text-gray-900 flex items-center">
                 <span className="w-4 h-4 ml-1 text-gray-400">📍</span>
                 {student.address}
@@ -441,15 +487,19 @@ const StudentView: React.FC = () => {
           <Users className="w-5 h-5 ml-2 text-green-600" />
           بيانات ولي الأمر
         </h2>
-        
+
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <label className="text-sm font-medium text-gray-500">اسم ولي الأمر</label>
+            <label className="text-sm font-medium text-gray-500">
+              اسم ولي الأمر
+            </label>
             <p className="mt-1 text-gray-900">{student.parentName}</p>
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-500">هاتف ولي الأمر</label>
+            <label className="text-sm font-medium text-gray-500">
+              هاتف ولي الأمر
+            </label>
             <p className="mt-1 text-gray-900 flex items-center">
               <Phone className="w-4 h-4 ml-1 text-gray-400" />
               {student.parentPhone}
@@ -458,7 +508,9 @@ const StudentView: React.FC = () => {
 
           {student.parentEmail && (
             <div>
-              <label className="text-sm font-medium text-gray-500">بريد ولي الأمر</label>
+              <label className="text-sm font-medium text-gray-500">
+                بريد ولي الأمر
+              </label>
               <p className="mt-1 text-gray-900 flex items-center">
                 <Mail className="w-4 h-4 ml-1 text-gray-400" />
                 {student.parentEmail}
@@ -468,7 +520,9 @@ const StudentView: React.FC = () => {
 
           {student.preferredTransportation && (
             <div>
-              <label className="text-sm font-medium text-gray-500">وسيلة النقل المفضلة</label>
+              <label className="text-sm font-medium text-gray-500">
+                وسيلة النقل المفضلة
+              </label>
               <p className="mt-1 text-gray-900 flex items-center">
                 <span className="w-4 h-4 ml-1 text-gray-400">🚗</span>
                 {student.preferredTransportation}
@@ -484,18 +538,22 @@ const StudentView: React.FC = () => {
           <span className="w-5 h-5 ml-2 text-red-600">⚠️</span>
           معلومات الطوارئ
         </h2>
-        
+
         <div className="grid md:grid-cols-2 gap-6">
           {student.emergencyContact && (
             <div>
-              <label className="text-sm font-medium text-gray-500">جهة الاتصال في الطوارئ</label>
+              <label className="text-sm font-medium text-gray-500">
+                جهة الاتصال في الطوارئ
+              </label>
               <p className="mt-1 text-gray-900">{student.emergencyContact}</p>
             </div>
           )}
 
           {student.emergencyPhone && (
             <div>
-              <label className="text-sm font-medium text-gray-500">هاتف الطوارئ</label>
+              <label className="text-sm font-medium text-gray-500">
+                هاتف الطوارئ
+              </label>
               <p className="mt-1 text-gray-900 flex items-center">
                 <Phone className="w-4 h-4 ml-1 text-gray-400" />
                 {student.emergencyPhone}
@@ -505,7 +563,9 @@ const StudentView: React.FC = () => {
 
           {student.medicalConditions && (
             <div className="md:col-span-2">
-              <label className="text-sm font-medium text-gray-500">الحالة الطبية</label>
+              <label className="text-sm font-medium text-gray-500">
+                الحالة الطبية
+              </label>
               <p className="mt-1 text-gray-900 flex items-center">
                 <span className="w-4 h-4 ml-1 text-gray-400">🏥</span>
                 {student.medicalConditions}
@@ -521,18 +581,24 @@ const StudentView: React.FC = () => {
           <GraduationCap className="w-5 h-5 ml-2 text-purple-600" />
           معلومات الكورسات
         </h2>
-        
+
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <label className="text-sm font-medium text-gray-500">عدد الكورسات المسجلة</label>
-            <p className="mt-1 text-gray-900">{student.registeredCourses || 0} كورس</p>
+            <label className="text-sm font-medium text-gray-500">
+              عدد الكورسات المسجلة
+            </label>
+            <p className="mt-1 text-gray-900">
+              {student.registeredCourses || 0} كورس
+            </p>
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-500">تاريخ التسجيل</label>
+            <label className="text-sm font-medium text-gray-500">
+              تاريخ التسجيل
+            </label>
             <p className="mt-1 text-gray-900 flex items-center">
               <Calendar className="w-4 h-4 ml-1 text-gray-400" />
-              {new Date(student.createdAt).toLocaleDateString('ar-EG')}
+              {new Date(student.createdAt).toLocaleDateString("ar-EG")}
             </p>
           </div>
         </div>
@@ -549,4 +615,4 @@ const StudentView: React.FC = () => {
   );
 };
 
-export default StudentView; 
+export default StudentView;

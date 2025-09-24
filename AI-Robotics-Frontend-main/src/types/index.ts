@@ -4,16 +4,17 @@ export interface User {
   fullName: string;
   email: string;
   phone: string;
-  address: string;
+  address?: string;
   role?: UserRole;
   userRole?: UserRole;
   branchId: number;
+  branch?: string;
 }
 
 export enum UserRole {
   Admin = 1,
   Employee = 2,
-  Student = 3
+  Student = 3,
 }
 
 export interface AuthResponse {
@@ -39,7 +40,7 @@ export interface Student {
   phone: string;
   email?: string;
   age: number;
-  gender: 'Male' | 'Female';
+  gender: "Male" | "Female";
   school?: string;
   grade?: string;
   address?: string;
@@ -70,7 +71,7 @@ export interface Course {
   startDate: string;
   endDate: string;
   schedule: string;
-  status: 'Planned' | 'Active' | 'Completed' | 'Cancelled' | 'Suspended';
+  status: "Planned" | "Active" | "Completed" | "Cancelled" | "Suspended";
   statusArabic: string;
   courseCategoryId?: number | null;
   courseCategory?: CourseCategory;
@@ -80,6 +81,22 @@ export interface Course {
   labId?: number;
   branchId?: number | null;
   branch?: Branch;
+  sessionsCount?: number;
+  content?: string;
+  prerequisites?: string;
+  scheduleDetails?: {
+    days: (
+      | "Sunday"
+      | "Monday"
+      | "Tuesday"
+      | "Wednesday"
+      | "Thursday"
+      | "Friday"
+      | "Saturday"
+    )[];
+    startTime: string;
+    endTime: string;
+  };
 }
 
 export interface CourseCategory {
@@ -110,9 +127,14 @@ export interface WorkspaceBooking {
   totalHours: number;
   totalAmount: number;
   paidAmount: number;
-  paymentStatus: 'Pending' | 'PartiallyPaid' | 'FullyPaid' | 'Overdue' | 'Cancelled';
+  paymentStatus:
+    | "Pending"
+    | "PartiallyPaid"
+    | "FullyPaid"
+    | "Overdue"
+    | "Cancelled";
   paymentStatusArabic: string;
-  paymentMethod: 'Cash' | 'InstaPay' | 'Fawry';
+  paymentMethod: "Cash" | "InstaPay" | "Fawry";
   paymentMethodArabic: string;
   purpose: string;
   notes?: string;
@@ -132,7 +154,7 @@ export interface SharedWorkspace {
   hasProjector: boolean;
   hasWhiteboard: boolean;
   equipment: string;
-  status: 'Available' | 'Occupied' | 'Full' | 'Maintenance';
+  status: "Available" | "Occupied" | "Full" | "Maintenance";
   statusArabic: string;
   isActive: boolean;
 }
@@ -153,13 +175,18 @@ export interface SharedWorkspaceBooking {
   totalHours: number;
   totalAmount: number;
   paidAmount: number;
-  paymentStatus: 'Pending' | 'PartiallyPaid' | 'FullyPaid' | 'Overdue' | 'Cancelled';
+  paymentStatus:
+    | "Pending"
+    | "PartiallyPaid"
+    | "FullyPaid"
+    | "Overdue"
+    | "Cancelled";
   paymentStatusArabic: string;
-  paymentMethod: 'Cash' | 'InstaPay' | 'Fawry';
+  paymentMethod: "Cash" | "InstaPay" | "Fawry";
   paymentMethodArabic: string;
-  bookingType: 'Individual' | 'Group' | 'Study' | 'Meeting' | 'Project';
+  bookingType: "Individual" | "Group" | "Study" | "Meeting" | "Project";
   bookingTypeArabic: string;
-  status: 'Active' | 'Completed' | 'Cancelled';
+  status: "Active" | "Completed" | "Cancelled";
   statusArabic: string;
   purpose: string;
   requiredEquipment?: string;
@@ -171,7 +198,7 @@ export interface Payment {
   id: number;
   amount: number;
   paymentDate: string;
-  paymentMethod: 'Cash' | 'InstaPay' | 'Fawry';
+  paymentMethod: "Cash" | "InstaPay" | "Fawry";
   paymentMethodArabic: string;
   notes?: string;
   type: string;
@@ -187,9 +214,9 @@ export interface Equipment {
   purchaseDate: string;
   purchasePrice: number;
   warrantyExpiry?: string;
-  condition: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+  condition: "Excellent" | "Good" | "Fair" | "Poor";
   conditionArabic: string;
-  status: 'Available' | 'InUse' | 'Maintenance' | 'Damaged' | 'Retired';
+  status: "Available" | "InUse" | "Maintenance" | "Damaged" | "Retired";
   statusArabic: string;
   roomId?: number;
 }
@@ -208,7 +235,7 @@ export interface Expense {
   paymentMethodName: string;
   receiptNumber?: string;
   notes?: string;
-  status: 'Pending' | 'Approved' | 'Rejected';
+  status: "Pending" | "Approved" | "Rejected";
   statusArabic: string;
   isRecurring: boolean;
   branchId: number;
@@ -230,13 +257,13 @@ export enum PaymentStatus {
   Unpaid = 2,
   PartiallyPaid = 3,
   FullyPaid = 4,
-  Cancelled = 5
+  Cancelled = 5,
 }
 
 export enum PaymentMethod {
   Cash = 1,
   InstaPay = 2,
-  Fawry = 3
+  Fawry = 3,
 }
 
 // Cafeteria Types
@@ -246,7 +273,7 @@ export enum CafeteriaItemCategory {
   Meals = 3,
   Desserts = 4,
   Fruits = 5,
-  Other = 6
+  Other = 6,
 }
 
 export enum CafeteriaOrderStatus {
@@ -254,7 +281,7 @@ export enum CafeteriaOrderStatus {
   Preparing = 2,
   Ready = 3,
   Delivered = 4,
-  Cancelled = 5
+  Cancelled = 5,
 }
 
 export interface CafeteriaItem {

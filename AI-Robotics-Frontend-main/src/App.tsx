@@ -22,6 +22,7 @@ import StudentDashboard from "./components/student/StudentDashboard";
 import EnrolledCourses from "./components/student/EnrolledCourses";
 import AvailableCourses from "./components/student/AvailableCourses";
 import Certificates from "./components/student/Certificates";
+import StudentGrades from "./components/student/StudentGrades";
 import StudentAccount from "./components/students/StudentAccount";
 import EmployeeDashboard from "./components/employee/EmployeeDashboard";
 import { CourseList, CourseForm, CourseDetails } from "./components/courses";
@@ -36,7 +37,6 @@ import OrdersManagement from "./components/cafeteria/OrdersManagement";
 import CafeteriaReports from "./components/cafeteria/CafeteriaReports";
 import AttendanceManagement from "./components/dashboard/AttendanceManagement";
 import GradesManagement from "./components/dashboard/GradesManagement";
-import StudentGrades from "./components/student/StudentGrades";
 
 // Default redirect component based on user role
 const DefaultRedirect = () => {
@@ -365,7 +365,7 @@ function App() {
                 path="/student/available-courses"
                 element={
                   <ProtectedRoute requiredRoles={[UserRole.Student]}>
-                    <AvailableCourses />
+                    <Navigate to="/student/courses" replace />
                   </ProtectedRoute>
                 }
               />
