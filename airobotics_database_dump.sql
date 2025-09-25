@@ -280,8 +280,8 @@ CREATE TABLE Equipment (
     PurchasePrice DECIMAL(18,2) NOT NULL,
     PurchaseDate DATETIME(6) NOT NULL,
     WarrantyExpiry DATETIME(6),
-    Status INT NOT NULL,
-    Condition INT NOT NULL,
+    `Status` INT NOT NULL,
+    `Condition` INT NOT NULL,
     BranchId INT NOT NULL,
     RoomId INT,
     AssignedToUserId INT,
@@ -650,3 +650,5 @@ INSERT INTO SharedWorkspaces (Id, Name, Description, MaxCapacity, HourlyRatePerP
 -- =============================================
 -- END OF DUMP FILE
 -- =============================================
+
+
