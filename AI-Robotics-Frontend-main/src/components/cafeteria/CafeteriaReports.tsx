@@ -387,7 +387,7 @@ const CafeteriaReports: React.FC = () => {
                 cy="50%"
                 labelLine={false}
                 label={({ name, percent }) =>
-                  typeof percent === "number"
+                  percent != null && !isNaN(percent)
                     ? `${name} ${(percent * 100).toFixed(0)}%`
                     : name
                 }
