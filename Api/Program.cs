@@ -14,6 +14,7 @@ namespace Api
         public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            builder.WebHost.UseUrls("http://0.0.0.0:5227;http://127.0.0.1:5227");
 
             // Add services to the container.
 
