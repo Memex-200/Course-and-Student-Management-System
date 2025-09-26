@@ -33,10 +33,11 @@ namespace Api
             {
                 options.AddDefaultPolicy(policy =>
                 {
-                    policy.WithOrigins(
-                            "http://localhost:5173",
-                            "http://localhost:5174"
-                        )
+					policy.WithOrigins(
+							"http://localhost:5173",
+							"http://localhost:5174",
+							"https://airobotics.site"
+						)
                         .AllowAnyMethod()
                         .AllowAnyHeader()
                         .AllowCredentials();
