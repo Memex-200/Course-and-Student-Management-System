@@ -14,8 +14,12 @@ namespace Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // ✅ Listen on all IPs and port 5227
-            builder.WebHost.UseUrls("http://0.0.0.0:5227");
+			// ✅ Bind port only if ASPNETCORE_URLS isn't provided (avoids conflicts when another instance is running)
+			var urlsFromEnv = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+			if (string.IsNullOrWhiteSpace(urlsFromEnv))
+			{
+				builder.WebHost.UseUrls("http://0.0.0.0:5227");
+			}
 
             // ✅ Database
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
