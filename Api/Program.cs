@@ -14,28 +14,31 @@ namespace Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Listen on all IPs
+            // ✅ Listen on all IPs and port 5227
             builder.WebHost.UseUrls("http://0.0.0.0:5227");
 
-            // Database
+            // ✅ Database
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString),
                     mySqlOptions => mySqlOptions.EnableRetryOnFailure()));
 
-            // CORS
+            // ✅ CORS
             builder.Services.AddCors(options =>
             {
                 options.AddDefaultPolicy(policy =>
                 {
-                    policy.WithOrigins("http://localhost:5173", "http://localhost:5174")
-                          .AllowAnyMethod()
-                          .AllowAnyHeader()
-                          .AllowCredentials();
+                    policy.WithOrigins(
+                            "http://localhost:5173",
+                            "http://localhost:5174"
+                        )
+                        .AllowAnyMethod()
+                        .AllowAnyHeader()
+                        .AllowCredentials();
                 });
             });
 
-            // JWT Auth
+            // ✅ JWT Auth
             var jwtSettings = builder.Configuration.GetSection("JwtSettings");
             var key = Encoding.ASCII.GetBytes(jwtSettings["SecretKey"]!);
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -74,24 +77,28 @@ namespace Api
 
             var app = builder.Build();
 
-            // ✅ Swagger before auth
+            // ✅ Swagger (enabled in production too)
             app.UseSwagger();
             app.UseSwaggerUI(c =>
             {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "AI Robotics API V1");
-                c.RoutePrefix = "swagger";
+                c.RoutePrefix = "swagger"; // → /swagger
             });
 
+            // ✅ CORS
             app.UseCors();
 
-            //app.UseHttpsRedirection();
+            // ❌ Disabled because nginx handles HTTPS
+            // app.UseHttpsRedirection();
 
+            // ✅ Auth
             app.UseAuthentication();
             app.UseAuthorization();
 
+            // ✅ Controllers
             app.MapControllers();
 
-            // Apply migrations + seed DB
+            // ✅ Apply migrations + seed DB
             using (var scope = app.Services.CreateScope())
             {
                 var services = scope.ServiceProvider;
