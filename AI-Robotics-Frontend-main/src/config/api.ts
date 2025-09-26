@@ -1,6 +1,6 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_URL || "http://localhost:5227/api",
+  BASE_URL: import.meta.env.VITE_API_URL || "https://airobotics.site/api",
   TIMEOUT: 10000,
 };
 

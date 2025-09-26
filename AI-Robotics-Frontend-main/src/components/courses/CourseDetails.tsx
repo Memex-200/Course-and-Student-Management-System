@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_CONFIG } from "../../config/api";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import coursesAPI from "../../lib/api/coursesAPI";
 import { coursesAPI as apiCourses } from "../../lib/api";
@@ -110,12 +111,12 @@ const CourseDetails: React.FC = () => {
     }
 
     try {
-      // Default enrollment data  
+      // Default enrollment data
       const enrollmentData = {
         totalAmount: course?.price || 0,
         paidAmount: 0, // دائماً صفر عند التسجيل الجديد
         paymentMethod: 1, // Cash = 1
-        notes: "تسجيل جديد من الواجهة"
+        notes: "تسجيل جديد من الواجهة",
       };
 
       const response = await coursesAPI.enrollStudent(
@@ -123,29 +124,31 @@ const CourseDetails: React.FC = () => {
         selectedStudentId,
         enrollmentData
       );
-      
+
       if (response.data.success) {
         toast.success("تم تسجيل الطالب في الكورس بنجاح", {
-          className: 'toast-success-green',
+          className: "toast-success-green",
           style: {
-            background: '#10B981',
-            color: '#ffffff',
-            border: 'none',
-            fontSize: '16px',
-            fontWeight: '500',
-            direction: 'rtl',
+            background: "#10B981",
+            color: "#ffffff",
+            border: "none",
+            fontSize: "16px",
+            fontWeight: "500",
+            direction: "rtl",
           },
           duration: 4000,
         });
         setEnrollmentModalOpen(false);
         setSelectedStudentId(0);
-        
+
         // تحديث بيانات الكورس والطلاب المسجلين
         await fetchCourse();
-        
+
         // تحديث قائمة الطلاب المتاحين للتسجيل
         try {
-          const availableResponse = await coursesAPI.getAvailableStudents(Number(id));
+          const availableResponse = await coursesAPI.getAvailableStudents(
+            Number(id)
+          );
           if (availableResponse.data.success) {
             setAvailableStudents(availableResponse.data.data);
           }
@@ -228,9 +231,9 @@ const CourseDetails: React.FC = () => {
 
       // تحويل طريقة الدفع من string إلى integer
       const paymentMethodMap: { [key: string]: number } = {
-        "Cash": 1,
-        "InstaPay": 2, 
-        "Fawry": 3
+        Cash: 1,
+        InstaPay: 2,
+        Fawry: 3,
       };
 
       const response = await coursesAPI.updateCoursePayment(
@@ -246,28 +249,40 @@ const CourseDetails: React.FC = () => {
       if (response.status === 200) {
         toast.success("تم تحديث حالة الدفع بنجاح");
         setPaymentModalOpen(false);
-        
+
         // تحديث البيانات فوراً في الواجهة قبل إعادة تحميل البيانات من الخادم
         if (course && course.enrolledStudents) {
-          const updatedStudents = course.enrolledStudents.map((student: any) => {
-            if ((student.RegistrationId || student.registrationId) === selectedEnrollmentId) {
-              return {
-                ...student,
-                PaidAmount: Number(paymentData.paidAmount),
-                paidAmount: Number(paymentData.paidAmount),
-                PaymentStatus: response.data.data?.paymentStatus || student.PaymentStatus,
-                PaymentStatusArabic: response.data.data?.paymentStatusArabic || student.PaymentStatusArabic,
-              };
+          const updatedStudents = course.enrolledStudents.map(
+            (student: any) => {
+              if (
+                (student.RegistrationId || student.registrationId) ===
+                selectedEnrollmentId
+              ) {
+                return {
+                  ...student,
+                  PaidAmount: Number(paymentData.paidAmount),
+                  paidAmount: Number(paymentData.paidAmount),
+                  PaymentStatus:
+                    response.data.data?.paymentStatus || student.PaymentStatus,
+                  PaymentStatusArabic:
+                    response.data.data?.paymentStatusArabic ||
+                    student.PaymentStatusArabic,
+                };
+              }
+              return student;
             }
-            return student;
-          });
-          
-          setCourse(prev => prev ? {
-            ...prev,
-            enrolledStudents: updatedStudents
-          } : null);
+          );
+
+          setCourse((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  enrolledStudents: updatedStudents,
+                }
+              : null
+          );
         }
-        
+
         // ثم إعادة تحميل البيانات من الخادم للتأكد
         await fetchCourse();
       } else {
@@ -279,9 +294,7 @@ const CourseDetails: React.FC = () => {
     }
   };
 
-  const handleCreateStudentAccount = async (
-    registrationId: number
-  ) => {
+  const handleCreateStudentAccount = async (registrationId: number) => {
     try {
       const response = await coursesAPI.createStudentAccount(registrationId);
 
@@ -354,17 +367,20 @@ const CourseDetails: React.FC = () => {
   const openStudentDetailsModal = async (student: any) => {
     try {
       // Get full student details from API
-      const response = await fetch(`http://localhost:5227/api/students/${student.id || student.Id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
+      const response = await fetch(
+        `${API_CONFIG.BASE_URL}/students/${student.id || student.Id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
         }
-      });
-      
+      );
+
       if (response.ok) {
         const fullStudentData = await response.json();
         console.log("Full student data from API:", fullStudentData);
-        
+
         // Merge registration data with full student data
         const enrichedStudent = {
           ...student,
@@ -379,9 +395,10 @@ const CourseDetails: React.FC = () => {
           registrationDate: new Date().toISOString(), // Today's date
           status: student.PaymentStatusArabic || "نشط",
           paymentMethod: "نقدي", // Default payment method
-          notes: student.notes || fullStudentData.notes || "طالب مسجل في الكورس"
+          notes:
+            student.notes || fullStudentData.notes || "طالب مسجل في الكورس",
         };
-        
+
         setSelectedStudent(enrichedStudent);
       } else {
         // If API call fails, use existing data with defaults
@@ -391,7 +408,7 @@ const CourseDetails: React.FC = () => {
           registrationDate: new Date().toISOString(),
           status: student.PaymentStatusArabic || "نشط",
           paymentMethod: "نقدي",
-          notes: "طالب مسجل في الكورس"
+          notes: "طالب مسجل في الكورس",
         };
         setSelectedStudent(enrichedStudent);
       }
@@ -402,13 +419,13 @@ const CourseDetails: React.FC = () => {
         ...student,
         idNumber: "30012345678901",
         registrationDate: new Date().toISOString(),
-        status: student.PaymentStatusArabic || "نشط", 
+        status: student.PaymentStatusArabic || "نشط",
         paymentMethod: "نقدي",
-        notes: "طالب مسجل في الكورس"
+        notes: "طالب مسجل في الكورس",
       };
       setSelectedStudent(enrichedStudent);
     }
-    
+
     setStudentDetailsModalOpen(true);
   };
 
@@ -538,18 +555,27 @@ const CourseDetails: React.FC = () => {
           <div className="divide-y">
             {course.enrolledStudents.map((student: any, index: number) => (
               <div
-                  key={`student-${student.id || student.Id || index}-${student.registrationId || student.RegistrationId || index}`}
+                key={`student-${student.id || student.Id || index}-${
+                  student.registrationId || student.RegistrationId || index
+                }`}
                 className="py-4 flex items-center justify-between"
               >
                 <div>
                   <h3 className="font-medium text-gray-900">
-                      {student.FullName || student.fullName || "غير محدد"}
+                    {student.FullName || student.fullName || "غير محدد"}
                   </h3>
-                    <p className="text-gray-600">{student.Phone || student.phone || "غير محدد"}</p>
-                    <p className="text-sm text-blue-600">
-                      {student.PaymentMethodArabic || student.paymentMethodArabic || "نقدي"} - 
-                      <span className="mr-1">{student.PaidAmount || student.paidAmount || 0} جنيه</span>
-                    </p>
+                  <p className="text-gray-600">
+                    {student.Phone || student.phone || "غير محدد"}
+                  </p>
+                  <p className="text-sm text-blue-600">
+                    {student.PaymentMethodArabic ||
+                      student.paymentMethodArabic ||
+                      "نقدي"}{" "}
+                    -
+                    <span className="mr-1">
+                      {student.PaidAmount || student.paidAmount || 0} جنيه
+                    </span>
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   {/* زر عرض بيانات الطالب */}
@@ -565,8 +591,14 @@ const CourseDetails: React.FC = () => {
                   <button
                     onClick={() => {
                       console.log("Full student object:", student);
-                      console.log("RegistrationId:", student.RegistrationId || student.registrationId);
-                      console.log("FullName:", student.FullName || student.fullName);
+                      console.log(
+                        "RegistrationId:",
+                        student.RegistrationId || student.registrationId
+                      );
+                      console.log(
+                        "FullName:",
+                        student.FullName || student.fullName
+                      );
                       console.log("All student keys:", Object.keys(student));
                       console.log("Student values:", Object.values(student));
                       openPaymentModal(
@@ -625,7 +657,7 @@ const CourseDetails: React.FC = () => {
                   >
                     <CheckCircle className="w-5 h-5" />
                   </button>
-                  
+
                   {/* زر انسحاب */}
                   <button
                     onClick={() =>
@@ -639,10 +671,14 @@ const CourseDetails: React.FC = () => {
                   >
                     <XCircle className="w-5 h-5" />
                   </button>
-                  
+
                   {/* زر إلغاء التسجيل */}
                   <button
-                    onClick={() => handleRemoveStudent(student.RegistrationId || student.registrationId)}
+                    onClick={() =>
+                      handleRemoveStudent(
+                        student.RegistrationId || student.registrationId
+                      )
+                    }
                     className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-200 border border-red-200"
                     title="إلغاء التسجيل"
                   >
@@ -795,43 +831,82 @@ const CourseDetails: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="font-medium text-gray-700">اسم الطالب:</p>
-                <p>{selectedStudent.FullName || selectedStudent.fullName || "غير محدد"}</p>
+                <p>
+                  {selectedStudent.FullName ||
+                    selectedStudent.fullName ||
+                    "غير محدد"}
+                </p>
               </div>
               <div>
                 <p className="font-medium text-gray-700">رقم الهوية:</p>
-                <p>{selectedStudent.idNumber || selectedStudent.nationalId || "30012345678901"}</p>
+                <p>
+                  {selectedStudent.idNumber ||
+                    selectedStudent.nationalId ||
+                    "30012345678901"}
+                </p>
               </div>
               <div>
                 <p className="font-medium text-gray-700">رقم التسجيل:</p>
-                <p>{selectedStudent.RegistrationId || selectedStudent.registrationId || "غير محدد"}</p>
+                <p>
+                  {selectedStudent.RegistrationId ||
+                    selectedStudent.registrationId ||
+                    "غير محدد"}
+                </p>
               </div>
               <div>
                 <p className="font-medium text-gray-700">رقم الهاتف:</p>
-                <p>{selectedStudent.Phone || selectedStudent.phone || "غير محدد"}</p>
+                <p>
+                  {selectedStudent.Phone || selectedStudent.phone || "غير محدد"}
+                </p>
               </div>
               <div>
                 <p className="font-medium text-gray-700">البريد الإلكتروني:</p>
-                <p>{selectedStudent.Email || selectedStudent.email || "غير محدد"}</p>
+                <p>
+                  {selectedStudent.Email || selectedStudent.email || "غير محدد"}
+                </p>
               </div>
               <div>
                 <p className="font-medium text-gray-700">تاريخ التسجيل:</p>
-                <p>{selectedStudent.registrationDate ? new Date(selectedStudent.registrationDate).toLocaleDateString("ar-EG") : new Date().toLocaleDateString("ar-EG")}</p>
+                <p>
+                  {selectedStudent.registrationDate
+                    ? new Date(
+                        selectedStudent.registrationDate
+                      ).toLocaleDateString("ar-EG")
+                    : new Date().toLocaleDateString("ar-EG")}
+                </p>
               </div>
               <div>
                 <p className="font-medium text-gray-700">حالة التسجيل:</p>
-                <p>{selectedStudent.status || selectedStudent.PaymentStatusArabic || "نشط"}</p>
+                <p>
+                  {selectedStudent.status ||
+                    selectedStudent.PaymentStatusArabic ||
+                    "نشط"}
+                </p>
               </div>
               <div>
                 <p className="font-medium text-gray-700">المبلغ المدفوع:</p>
-                <p>{selectedStudent.PaidAmount || selectedStudent.paidAmount || 0} جنيه</p>
+                <p>
+                  {selectedStudent.PaidAmount ||
+                    selectedStudent.paidAmount ||
+                    0}{" "}
+                  جنيه
+                </p>
               </div>
               <div>
                 <p className="font-medium text-gray-700">طريقة الدفع:</p>
-                <p>{selectedStudent.PaymentMethodArabic || selectedStudent.paymentMethodArabic || "نقدي"}</p>
+                <p>
+                  {selectedStudent.PaymentMethodArabic ||
+                    selectedStudent.paymentMethodArabic ||
+                    "نقدي"}
+                </p>
               </div>
               <div>
                 <p className="font-medium text-gray-700">الملاحظات:</p>
-                <p>{selectedStudent.notes || selectedStudent.Notes || "لا توجد ملاحظات"}</p>
+                <p>
+                  {selectedStudent.notes ||
+                    selectedStudent.Notes ||
+                    "لا توجد ملاحظات"}
+                </p>
               </div>
             </div>
             <div className="flex justify-end space-x-2 rtl:space-x-reverse mt-6">
