@@ -386,11 +386,13 @@ const CafeteriaReports: React.FC = () => {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) =>
-                  percent != null && !isNaN(percent)
-                    ? `${name} ${(percent * 100).toFixed(0)}%`
-                    : name
-                }
+                label={(props: any) => {
+                  const name = props?.name as string;
+                  const p = Number(props?.percent);
+                  return Number.isFinite(p)
+                    ? `${name} ${(p * 100).toFixed(0)}%`
+                    : name;
+                }}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
