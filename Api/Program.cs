@@ -14,9 +14,10 @@ namespace Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-			// ✅ Bind port only if ASPNETCORE_URLS isn't provided (avoids conflicts when another instance is running)
+			// ✅ Bind default port only if neither command-line/config nor env provided URLs
+			var urlsFromConfig = builder.Configuration["urls"]; // picked up from --urls or appsettings
 			var urlsFromEnv = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
-			if (string.IsNullOrWhiteSpace(urlsFromEnv))
+			if (string.IsNullOrWhiteSpace(urlsFromConfig) && string.IsNullOrWhiteSpace(urlsFromEnv))
 			{
 				builder.WebHost.UseUrls("http://0.0.0.0:5227");
 			}
