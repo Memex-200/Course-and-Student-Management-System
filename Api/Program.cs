@@ -2,8 +2,8 @@ using Api.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json.Serialization;
 
 namespace Api
@@ -14,7 +14,7 @@ namespace Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Listen on all IPs (IPv4)
+            // Listen on all IPs
             builder.WebHost.UseUrls("http://0.0.0.0:5227");
 
             // Database
@@ -65,23 +65,26 @@ namespace Api
                 opt.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
             });
 
+            // ✅ Swagger setup
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
+            builder.Services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new() { Title = "AI Robotics API", Version = "v1" });
+            });
 
             var app = builder.Build();
 
-			// Enable Swagger in all environments
-			app.UseSwagger();
-			app.UseSwaggerUI(c =>
-			{
-				c.SwaggerEndpoint("/swagger/v1/swagger.json", "AI Robotics API V1");
-				c.RoutePrefix = "swagger";
-			});
+            // ✅ Swagger before auth
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "AI Robotics API V1");
+                c.RoutePrefix = "swagger";
+            });
 
             app.UseCors();
 
-            // Disable HTTPS redirection in production (since we proxy via Nginx)
-            // app.UseHttpsRedirection();
+            //app.UseHttpsRedirection();
 
             app.UseAuthentication();
             app.UseAuthorization();
