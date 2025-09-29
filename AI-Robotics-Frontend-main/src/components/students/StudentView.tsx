@@ -43,7 +43,7 @@ const CourseRegistrationModal: React.FC<{
   const fetchCourses = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/courses", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/courses`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -64,7 +64,7 @@ const CourseRegistrationModal: React.FC<{
 
     try {
       const response = await fetch(
-        `/api/students/${studentId}/register-course`,
+        `${import.meta.env.VITE_API_URL}/students/${studentId}/register-course`,
         {
           method: "POST",
           headers: {

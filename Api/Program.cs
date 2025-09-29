@@ -43,7 +43,7 @@ namespace Api
                         .AllowCredentials();
                 });
             });
-
+            
             // ✅ JWT Auth
             var jwtSettings = builder.Configuration.GetSection("JwtSettings");
             var key = Encoding.ASCII.GetBytes(jwtSettings["SecretKey"]!);
