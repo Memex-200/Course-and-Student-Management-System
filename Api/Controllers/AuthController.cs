@@ -59,6 +59,7 @@ namespace Api.Controllers
                 return Ok(new
                 {
                     token,
+                    role = user.Role == UserRole.Admin ? "Admin" : user.Role == UserRole.Employee ? "Employee" : "Student",
                     user = new
                     {
                         user.Id,
@@ -255,17 +256,18 @@ namespace Api.Controllers
 
         private string GenerateJwtToken(User user)
         {
-            var jwtSettings = _configuration.GetSection("JwtSettings");
-            var secretKey = jwtSettings["SecretKey"];
+            var jwtSettings = _configuration.GetSection("Jwt");
+            var secretKey = jwtSettings["Key"];
             var key = Encoding.ASCII.GetBytes(secretKey!);
 
             var claims = new List<Claim>
             {
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Username),
                 new Claim(ClaimTypes.Email, user.Email ?? ""),
-                // عدل هنا: استخدم اسم الدور بدلاً من الرقم
                 new Claim(ClaimTypes.Role, user.Role == UserRole.Admin ? "Admin" : user.Role == UserRole.Employee ? "Employee" : "Student"),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim("BranchId", user.BranchId.ToString()),
                 new Claim("FullName", user.FullName)
             };

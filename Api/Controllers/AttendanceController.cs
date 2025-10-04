@@ -27,6 +27,7 @@ namespace Api.Controllers
         }
 
         [HttpGet("courses/{courseId}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetCourseAttendance(int courseId, [FromQuery] DateTime? sessionDate = null)
         {
             try
@@ -117,7 +118,7 @@ namespace Api.Controllers
         }
 
         [HttpPost("courses/{courseId}/session")]
-        [Authorize(Roles = "Admin,Employee")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateAttendanceSession(int courseId, [FromBody] CreateAttendanceSessionRequest request)
         {
             try
@@ -267,7 +268,7 @@ namespace Api.Controllers
         }
 
         [HttpPut("courses/{courseId}/session")]
-        [Authorize(Roles = "Admin,Employee")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateAttendanceSession(int courseId, [FromBody] UpdateAttendanceSessionRequest request)
         {
             try
@@ -316,10 +317,25 @@ namespace Api.Controllers
         }
 
         [HttpGet("students/{studentId}")]
+        [Authorize(Roles = "Student,Admin")]
         public async Task<IActionResult> GetStudentAttendance(int studentId, [FromQuery] int? courseId = null, [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
         {
             try
             {
+                // Check if user is a student and trying to access their own data
+                var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+                
+                // If user is a student, they can only view their own attendance
+                if (userRole == "Student")
+                {
+                    var currentUser = await _context.Users.FindAsync(currentUserId);
+                    if (currentUser?.StudentId != studentId)
+                    {
+                        return Forbid("يمكن للطلاب فقط عرض حضورهم الخاص");
+                    }
+                }
+
                 var student = await _context.Students.FindAsync(studentId);
                 if (student == null)
                     return NotFound(new { message = "الطالب غير موجود" });
@@ -384,6 +400,7 @@ namespace Api.Controllers
         }
 
         [HttpGet("reports/course/{courseId}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetCourseAttendanceReport(int courseId, [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
         {
             try
