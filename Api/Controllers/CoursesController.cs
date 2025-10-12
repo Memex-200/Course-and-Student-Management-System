@@ -25,6 +25,47 @@ namespace Api.Controllers
             _logger = logger;
         }
 
+        [HttpGet("admin-overview")]
+        public async Task<IActionResult> GetAdminOverview()
+        {
+            try
+            {
+                // Get all courses without authorization for admin overview
+                var courses = await _context.Courses
+                    .Include(c => c.CourseCategory)
+                    .Include(c => c.Branch)
+                    .Include(c => c.Instructor)
+                        .ThenInclude(i => i.User)
+                    .Include(c => c.CourseRegistrations)
+                    .Select(c => new
+                    {
+                        c.Id,
+                        c.Name,
+                        c.Description,
+                        c.Price,
+                        c.SessionsCount,
+                        c.MaxStudents,
+                        CurrentStudents = c.CourseRegistrations.Count(cr => cr.PaymentStatus != PaymentStatus.Cancelled),
+                        c.StartDate,
+                        c.EndDate,
+                        c.Status,
+                        BranchName = c.Branch != null ? c.Branch.Name : "غير محدد",
+                        InstructorName = c.Instructor != null && c.Instructor.User != null ? c.Instructor.User.FullName : "غير محدد",
+                        c.IsActive,
+                        c.CreatedAt
+                    })
+                    .OrderByDescending(c => c.CreatedAt)
+                    .ToListAsync();
+
+                return Ok(new { success = true, data = courses });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting admin overview");
+                return StatusCode(500, new { success = false, message = "حدث خطأ في الخادم", error = ex.Message });
+            }
+        }
+
         [HttpGet]
         [Authorize(Policy = "AdminOrEmployee")]
         public async Task<IActionResult> GetCourses([FromQuery] int? branchId = null, [FromQuery] int? categoryId = null)

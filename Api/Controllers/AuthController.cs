@@ -35,6 +35,53 @@ namespace Api.Controllers
             return Ok(new { message = "API is working!", timestamp = DateTime.UtcNow });
         }
 
+        [HttpPost("admin-login")]
+        public async Task<IActionResult> AdminLogin([FromBody] AdminLoginRequest request)
+        {
+            try
+            {
+                // Check if it's a valid admin login request
+                if (request.Username != "admin" || request.Password != "123456")
+                {
+                    return BadRequest(new { message = "بيانات الدخول غير صحيحة" });
+                }
+
+                // Get admin user
+                var adminUser = await _context.Users
+                    .Include(u => u.Branch)
+                    .FirstOrDefaultAsync(u => u.Username == "admin" && u.IsActive);
+
+                if (adminUser == null)
+                {
+                    return BadRequest(new { message = "حساب المدير غير موجود" });
+                }
+
+                // Generate JWT token
+                var token = GenerateJwtToken(adminUser);
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "تم تسجيل الدخول بنجاح",
+                    token = token,
+                    user = new
+                    {
+                        id = adminUser.Id,
+                        username = adminUser.Username,
+                        fullName = adminUser.FullName,
+                        role = adminUser.Role.ToString(),
+                        branchId = adminUser.BranchId,
+                        branchName = adminUser.Branch?.Name
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in admin login");
+                return StatusCode(500, new { message = "حدث خطأ في الخادم" });
+            }
+        }
+
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
@@ -360,6 +407,15 @@ namespace Api.Controllers
 
         [Required]
         [MinLength(6)]
+        public string Password { get; set; } = string.Empty;
+    }
+
+    public class AdminLoginRequest
+    {
+        [Required]
+        public string Username { get; set; } = string.Empty;
+
+        [Required]
         public string Password { get; set; } = string.Empty;
     }
 

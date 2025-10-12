@@ -14,7 +14,6 @@ namespace Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
     public class StudentsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -30,7 +29,119 @@ namespace Api.Controllers
             _passwordGenerator = passwordGenerator;
         }
 
+        [HttpGet("admin-dashboard")]
+        public async Task<IActionResult> GetAdminDashboard()
+        {
+            try
+            {
+                // Get basic statistics for admin
+                var totalStudents = await _context.Students.CountAsync();
+                var activeStudents = await _context.Students.CountAsync(s => s.IsActive);
+                var totalCourses = await _context.Courses.CountAsync();
+                var activeCourses = await _context.Courses.CountAsync(c => c.IsActive);
+                var totalRegistrations = await _context.CourseRegistrations.CountAsync();
+                var activeRegistrations = await _context.CourseRegistrations.CountAsync(cr => cr.PaymentStatus != PaymentStatus.Cancelled);
+
+                // Get recent students
+                var recentStudents = await _context.Students
+                    .Include(s => s.Branch)
+                    .OrderByDescending(s => s.CreatedAt)
+                    .Take(5)
+                    .Select(s => new
+                    {
+                        s.Id,
+                        s.FullName,
+                        s.Phone,
+                        s.Email,
+                        s.CreatedAt,
+                        BranchName = s.Branch != null ? s.Branch.Name : "غير محدد"
+                    })
+                    .ToListAsync();
+
+                // Get recent courses
+                var recentCourses = await _context.Courses
+                    .Include(c => c.Branch)
+                    .OrderByDescending(c => c.CreatedAt)
+                    .Take(5)
+                    .Select(c => new
+                    {
+                        c.Id,
+                        c.Name,
+                        c.Price,
+                        c.SessionsCount,
+                        c.MaxStudents,
+                        c.StartDate,
+                        c.EndDate,
+                        c.Status,
+                        BranchName = c.Branch != null ? c.Branch.Name : "غير محدد"
+                    })
+                    .ToListAsync();
+
+                var dashboardData = new
+                {
+                    statistics = new
+                    {
+                        totalStudents,
+                        activeStudents,
+                        totalCourses,
+                        activeCourses,
+                        totalRegistrations,
+                        activeRegistrations
+                    },
+                    recentStudents,
+                    recentCourses
+                };
+
+                return Ok(new { success = true, data = dashboardData });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting admin dashboard");
+                return StatusCode(500, new { success = false, message = "حدث خطأ في الخادم", error = ex.Message });
+            }
+        }
+
+        [HttpGet("admin-overview")]
+        public async Task<IActionResult> GetAdminOverview()
+        {
+            try
+            {
+                // Get all students without authorization for admin overview
+                var students = await _context.Students
+                    .Include(s => s.Branch)
+                    .Include(s => s.CourseRegistrations)
+                    .Select(s => new
+                    {
+                        s.Id,
+                        s.FullName,
+                        s.Phone,
+                        s.Email,
+                        s.Age,
+                        s.Gender,
+                        s.School,
+                        s.ParentName,
+                        s.ParentPhone,
+                        s.BranchId,
+                        BranchName = s.Branch != null ? s.Branch.Name : "غير محدد",
+                        s.IsActive,
+                        registeredCourses = s.CourseRegistrations.Count(cr => cr.PaymentStatus != PaymentStatus.Cancelled),
+                        totalRegistrations = s.CourseRegistrations.Count,
+                        s.CreatedAt
+                    })
+                    .OrderByDescending(s => s.CreatedAt)
+                    .ToListAsync();
+
+                return Ok(new { success = true, data = students });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting admin overview");
+                return StatusCode(500, new { success = false, message = "حدث خطأ في الخادم", error = ex.Message });
+            }
+        }
+
         [HttpGet]
+        [Authorize]
         public async Task<IActionResult> GetStudents([FromQuery] int? branchId = null, [FromQuery] string? search = null)
         {
             try
