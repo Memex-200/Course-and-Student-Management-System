@@ -71,6 +71,7 @@ namespace Api
             {
                 options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
                 options.AddPolicy("StudentOnly", policy => policy.RequireRole("Student"));
+                options.AddPolicy("AdminOrEmployee", policy => policy.RequireRole("Admin", "Employee"));
             });
 
             builder.Services.AddControllers().AddJsonOptions(opt =>
