@@ -101,7 +101,7 @@ server {
     
     # API
     location /api/ {
-        proxy_pass http://localhost:$API_PORT/api/;
+        proxy_pass http://localhost:$API_PORT/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection keep-alive;

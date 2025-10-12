@@ -21,8 +21,11 @@ namespace Api
             // ✅ Database
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString),
-                    mySqlOptions => mySqlOptions.EnableRetryOnFailure()));
+            {
+                var serverVersion = new MySqlServerVersion(new Version(10, 11, 14)); // إصدار MariaDB عندك
+                options.UseMySql(connectionString, serverVersion,
+                    mySqlOptions => mySqlOptions.EnableRetryOnFailure());
+            });
 
             // ✅ CORS
             builder.Services.AddCors(options =>
