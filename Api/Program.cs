@@ -74,6 +74,11 @@ namespace Api
                 options.AddPolicy("AdminOrEmployee", policy => policy.RequireRole("Admin", "Employee"));
             });
 
+            // ✅ Services
+            builder.Services.Configure<Api.Models.EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+            builder.Services.AddScoped<Api.Services.IEmailService, Api.Services.EmailService>();
+            builder.Services.AddScoped<Api.Services.IPasswordGeneratorService, Api.Services.PasswordGeneratorService>();
+
             builder.Services.AddControllers().AddJsonOptions(opt =>
             {
                 opt.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
