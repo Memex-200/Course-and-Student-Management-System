@@ -14,13 +14,9 @@ namespace Api
         {
             var builder = WebApplication.CreateBuilder(args);
 
-			// ✅ Bind default port only if neither command-line/config nor env provided URLs
-			var urlsFromConfig = builder.Configuration["urls"]; // picked up from --urls or appsettings
-			var urlsFromEnv = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
-			if (string.IsNullOrWhiteSpace(urlsFromConfig) && string.IsNullOrWhiteSpace(urlsFromEnv))
-			{
-				builder.WebHost.UseUrls("http://0.0.0.0:5227");
-			}
+            // ✅ Always listen on all IPs for production environment (VPS)
+            // يمكن تغييره لاحقًا لو حبيت تستخدم Nginx Reverse Proxy
+            builder.WebHost.UseUrls("http://0.0.0.0:5227");
 
             // ✅ Database
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -33,17 +29,17 @@ namespace Api
             {
                 options.AddDefaultPolicy(policy =>
                 {
-					policy.WithOrigins(
-							"http://localhost:5173",
-							"http://localhost:5174",
-							"https://airobotics.site"
-						)
+                    policy.WithOrigins(
+                            "http://localhost:5173",
+                            "http://localhost:5174",
+                            "https://airobotics.site"
+                        )
                         .AllowAnyMethod()
                         .AllowAnyHeader()
                         .AllowCredentials();
                 });
             });
-            
+
             // ✅ JWT Auth
             var jwtSettings = builder.Configuration.GetSection("Jwt");
             var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]!);
@@ -90,7 +86,7 @@ namespace Api
             builder.Services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new() { Title = "AI Robotics API", Version = "v1" });
-                
+
                 // Add Bearer token authentication to Swagger
                 c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
                 {
@@ -101,7 +97,7 @@ namespace Api
                     In = Microsoft.OpenApi.Models.ParameterLocation.Header,
                     Description = "Enter 'Bearer {your JWT token}'"
                 });
-                
+
                 c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
                 {
                     {
