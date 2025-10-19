@@ -108,52 +108,90 @@ public async Task<IActionResult> AdminLogin([FromBody] AdminLoginRequest request
         return StatusCode(500, new { message = "حدث خطأ في الخادم" });
     }
 }
-
-        [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequest request)
+[HttpPost("login")]
+public async Task<IActionResult> Login([FromBody] LoginRequest request)
+{
+    try
+    {
+        // ✅ 1. لو المستخدم هو الأدمن الأساسي (افتراضي)
+        if (request.Username == "admin" && request.Password == "123456")
         {
-            try
-            {
-                var user = await _context.Users
-                    .Include(u => u.Branch)
-                    .FirstOrDefaultAsync(u => u.Username == request.Username && u.IsActive);
+            var defaultAdmin = await _context.Users
+                .Include(u => u.Branch)
+                .FirstOrDefaultAsync(u => u.Username == "admin" && u.IsActive);
 
-                if (user == null || !VerifyPassword(request.Password, user.PasswordHash))
+            if (defaultAdmin == null)
+                return BadRequest(new { message = "حساب المدير الافتراضي غير موجود" });
+
+            var token = GenerateJwtToken(defaultAdmin);
+            return Ok(new
+            {
+                success = true,
+                message = "تم تسجيل الدخول كمدير النظام",
+                token,
+                user = new
                 {
-                    return BadRequest(new { message = "اسم المستخدم أو كلمة المرور غير صحيحة" });
+                    id = defaultAdmin.Id,
+                    username = defaultAdmin.Username,
+                    fullName = defaultAdmin.FullName,
+                    role = defaultAdmin.Role.ToString(),
+                    branchId = defaultAdmin.BranchId,
+                    branchName = defaultAdmin.Branch?.Name
                 }
-
-                var token = GenerateJwtToken(user);
-                
-                // Log token claims for debugging
-                var tokenHandler = new JwtSecurityTokenHandler();
-                var jwtToken = tokenHandler.ReadJwtToken(token);
-                _logger.LogInformation($"Generated token claims: {string.Join(", ", jwtToken.Claims.Select(c => $"{c.Type}={c.Value}"))}");
-                
-                return Ok(new
-                {
-                    token,
-                    role = user.Role == UserRole.Admin ? "Admin" : user.Role == UserRole.Employee ? "Employee" : "Student",
-                    user = new
-                    {
-                        user.Id,
-                        user.Username,
-                        user.FullName,
-                        user.Email,
-                        user.Phone,
-                        user.Address,
-                        Role = (int)user.Role,
-                        Branch = user.Branch?.Name,
-                        user.BranchId
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during login");
-                return StatusCode(500, new { message = "حدث خطأ في الخادم", error = ex.Message });
-            }
+            });
         }
+
+        // ✅ 2. نحاول نجيب المستخدم من قاعدة البيانات
+        var user = await _context.Users
+            .Include(u => u.Branch)
+            .FirstOrDefaultAsync(u => u.Username == request.Username && u.IsActive);
+
+        if (user == null)
+            return BadRequest(new { message = "اسم المستخدم غير موجود" });
+
+        // ✅ 3. نتحقق من كلمة المرور
+        if (!VerifyPassword(request.Password, user.PasswordHash))
+            return BadRequest(new { message = "كلمة المرور غير صحيحة" });
+
+        // ✅ 4. نتحقق من الحالة
+        if (!user.IsActive)
+            return BadRequest(new { message = "الحساب غير مفعل" });
+
+        // ✅ 5. نولّد JWT Token
+        var jwtToken = GenerateJwtToken(user);
+
+        // ✅ 6. نرجع التفاصيل حسب الدور
+        string roleMessage = user.Role switch
+        {
+            UserRole.Admin => "تم تسجيل الدخول كأدمن",
+            UserRole.Employee => "تم تسجيل الدخول كموظف",
+            UserRole.Student => "تم تسجيل الدخول كطالب",
+            _ => "تم تسجيل الدخول بنجاح"
+        };
+
+        return Ok(new
+        {
+            success = true,
+            message = roleMessage,
+            token = jwtToken,
+            user = new
+            {
+                id = user.Id,
+                username = user.Username,
+                fullName = user.FullName,
+                role = user.Role.ToString(),
+                branchId = user.BranchId,
+                branchName = user.Branch?.Name
+            }
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error in unified login");
+        return StatusCode(500, new { message = "حدث خطأ أثناء تسجيل الدخول" });
+    }
+}
+
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
