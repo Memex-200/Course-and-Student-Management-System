@@ -35,52 +35,79 @@ namespace Api.Controllers
             return Ok(new { message = "API is working!", timestamp = DateTime.UtcNow });
         }
 
-        [HttpPost("admin-login")]
-        public async Task<IActionResult> AdminLogin([FromBody] AdminLoginRequest request)
+       [HttpPost("admin-login")]
+public async Task<IActionResult> AdminLogin([FromBody] AdminLoginRequest request)
+{
+    try
+    {
+        // أولوية لحساب الأدمن الأساسي الثابت (اختياري)
+        if (request.Username == "admin" && request.Password == "123456")
         {
-            try
+            var defaultAdmin = await _context.Users
+                .Include(u => u.Branch)
+                .FirstOrDefaultAsync(u => u.Username == "admin" && u.IsActive);
+
+            if (defaultAdmin == null)
             {
-                // Check if it's a valid admin login request
-                if (request.Username != "admin" || request.Password != "123456")
-                {
-                    return BadRequest(new { message = "بيانات الدخول غير صحيحة" });
-                }
-
-                // Get admin user
-                var adminUser = await _context.Users
-                    .Include(u => u.Branch)
-                    .FirstOrDefaultAsync(u => u.Username == "admin" && u.IsActive);
-
-                if (adminUser == null)
-                {
-                    return BadRequest(new { message = "حساب المدير غير موجود" });
-                }
-
-                // Generate JWT token
-                var token = GenerateJwtToken(adminUser);
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "تم تسجيل الدخول بنجاح",
-                    token = token,
-                    user = new
-                    {
-                        id = adminUser.Id,
-                        username = adminUser.Username,
-                        fullName = adminUser.FullName,
-                        role = adminUser.Role.ToString(),
-                        branchId = adminUser.BranchId,
-                        branchName = adminUser.Branch?.Name
-                    }
-                });
+                return BadRequest(new { message = "حساب المدير الافتراضي غير موجود" });
             }
-            catch (Exception ex)
+
+            var defaultToken = GenerateJwtToken(defaultAdmin);
+            return Ok(new
             {
-                _logger.LogError(ex, "Error in admin login");
-                return StatusCode(500, new { message = "حدث خطأ في الخادم" });
-            }
+                success = true,
+                message = "تم تسجيل الدخول كمدير النظام",
+                token = defaultToken,
+                user = new
+                {
+                    id = defaultAdmin.Id,
+                    username = defaultAdmin.Username,
+                    fullName = defaultAdmin.FullName,
+                    role = defaultAdmin.Role.ToString(),
+                    branchId = defaultAdmin.BranchId,
+                    branchName = defaultAdmin.Branch?.Name
+                }
+            });
         }
+
+        // لو مش الأدمن الأساسي، نفحص الأدمنز من قاعدة البيانات
+        var adminUser = await _context.Users
+            .Include(u => u.Branch)
+            .FirstOrDefaultAsync(u => u.Username == request.Username && u.IsActive);
+
+        if (adminUser == null)
+            return BadRequest(new { message = "اسم المستخدم غير موجود" });
+
+        if (adminUser.Role != UserRole.Admin)
+            return BadRequest(new { message = "هذا المستخدم ليس أدمن" });
+
+        if (!VerifyPassword(request.Password, adminUser.PasswordHash))
+            return BadRequest(new { message = "كلمة المرور غير صحيحة" });
+
+        var token = GenerateJwtToken(adminUser);
+
+        return Ok(new
+        {
+            success = true,
+            message = "تم تسجيل الدخول بنجاح كأدمن",
+            token = token,
+            user = new
+            {
+                id = adminUser.Id,
+                username = adminUser.Username,
+                fullName = adminUser.FullName,
+                role = adminUser.Role.ToString(),
+                branchId = adminUser.BranchId,
+                branchName = adminUser.Branch?.Name
+            }
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error in admin login");
+        return StatusCode(500, new { message = "حدث خطأ في الخادم" });
+    }
+}
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
