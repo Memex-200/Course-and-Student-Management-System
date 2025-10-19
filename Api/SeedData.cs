@@ -3,6 +3,7 @@ using Api.Data;
 using Api.Models;
 using System.Security.Cryptography;
 using System.Text;
+using BCrypt.Net;
 
 namespace Api
 {
@@ -276,9 +277,7 @@ namespace Api
 
         private static string HashPassword(string password)
         {
-            using var sha256 = SHA256.Create();
-            var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password + "AIRoboticsAcademy2025"));
-            return Convert.ToBase64String(hashedBytes);
+            return BCrypt.Net.BCrypt.HashPassword(password);
         }
 
         private static async Task SeedCourseRegistrations(ApplicationDbContext context)

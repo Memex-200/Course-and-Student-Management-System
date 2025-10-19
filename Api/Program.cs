@@ -149,6 +149,9 @@ namespace Api
                     var dbContext = services.GetRequiredService<ApplicationDbContext>();
                     await dbContext.Database.MigrateAsync();
                     await SeedData.Initialize(services);
+                    
+                    // Update existing password hashes to BCrypt
+                    await Api.Scripts.UpdatePasswordHashes.UpdateAllPasswordsToBCrypt(services);
                 }
                 catch (Exception ex)
                 {
