@@ -462,6 +462,70 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
                 return oldHash == hash;
             }
         }
+
+        /// <summary>
+        /// TEMPORARY ENDPOINT - ONE-TIME PASSWORD REHASHING
+        /// This endpoint rehashes all admin user passwords using BCrypt.
+        /// Should be removed after running once for security reasons.
+        /// </summary>
+        [HttpGet("rehash-admins")]
+        public async Task<IActionResult> RehashAdminPasswords()
+        {
+            try
+            {
+                // Find all users with Role == UserRole.Admin
+                var adminUsers = await _context.Users
+                    .Where(u => u.Role == UserRole.Admin)
+                    .ToListAsync();
+
+                if (!adminUsers.Any())
+                {
+                    return Ok(new { message = "No admin users found to rehash" });
+                }
+
+                // Known admin credentials mapping
+                var adminCredentials = new Dictionary<string, string>
+                {
+                    { "admin", "123456" },
+                    { "ibrahem", "Ibrahem@123!" },
+                    { "karem", "Karem@123!" },
+                    { "ahmed", "Ahmed@123!" },
+                    { "mira", "Mira@123!" },
+                    { "memex", "Eman@123!" }
+                };
+
+                var rehashedCount = 0;
+                var rehashedUsers = new List<string>();
+
+                foreach (var adminUser in adminUsers)
+                {
+                    // Get the known password for this admin user
+                    if (adminCredentials.TryGetValue(adminUser.Username, out var knownPassword))
+                    {
+                        // Re-hash the known password using BCrypt
+                        adminUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(knownPassword);
+                        rehashedCount++;
+                        rehashedUsers.Add(adminUser.Username);
+                    }
+                }
+
+                // Save all changes
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = $"Successfully rehashed passwords for {rehashedCount} admin users",
+                    rehashedUsers = rehashedUsers,
+                    totalAdminUsers = adminUsers.Count,
+                    note = "This endpoint should be removed after running once for security reasons"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during admin password rehashing");
+                return StatusCode(500, new { message = "حدث خطأ في الخادم أثناء إعادة تشفير كلمات المرور", error = ex.Message });
+            }
+        }
     }
 
     public class LoginRequest
