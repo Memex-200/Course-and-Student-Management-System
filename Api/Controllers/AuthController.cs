@@ -447,20 +447,21 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
             return BCrypt.Net.BCrypt.HashPassword(password);
         }
 
-        private bool VerifyPassword(string password, string hash)
+        private bool VerifyPassword(string enteredPassword, string storedHash)
         {
-            try
+            // Case 1: Old SHA256 hash (64 chars, no $2 prefix)
+            if (storedHash.Length == 64 && !storedHash.StartsWith("$2"))
             {
-                return BCrypt.Net.BCrypt.Verify(password, hash);
+                using (var sha = SHA256.Create())
+                {
+                    var hashBytes = sha.ComputeHash(Encoding.UTF8.GetBytes(enteredPassword));
+                    var hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+                    return hash == storedHash;
+                }
             }
-            catch
-            {
-                // Fallback for old SHA256 hashes
-                using var sha256 = System.Security.Cryptography.SHA256.Create();
-                var hashedBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password + "AIRoboticsAcademy2025"));
-                var oldHash = Convert.ToBase64String(hashedBytes);
-                return oldHash == hash;
-            }
+
+            // Case 2: New BCrypt hash
+            return BCrypt.Net.BCrypt.Verify(enteredPassword, storedHash);
         }
 
         /// <summary>
