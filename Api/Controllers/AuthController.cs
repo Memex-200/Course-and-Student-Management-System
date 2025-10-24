@@ -8,6 +8,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using BCrypt.Net;
@@ -76,13 +77,14 @@ public async Task<IActionResult> AdminLogin([FromBody] AdminLoginRequest request
             .FirstOrDefaultAsync(u => u.Username == request.Username && u.IsActive);
 
         if (adminUser == null)
-            return BadRequest(new { message = "اسم المستخدم غير موجود" });
+            return BadRequest(new { message = "اسم المستخدم أو كلمة المرور غير صحيحة" });
 
         if (adminUser.Role != UserRole.Admin)
             return BadRequest(new { message = "هذا المستخدم ليس أدمن" });
 
-        if (!VerifyPassword(request.Password, adminUser.PasswordHash))
-            return BadRequest(new { message = "كلمة المرور غير صحيحة" });
+        var ok = VerifyPasswordAndMigrateIfNeeded(adminUser, request.Password);
+        if (!ok)
+            return BadRequest(new { message = "اسم المستخدم أو كلمة المرور غير صحيحة" });
 
         var token = GenerateJwtToken(adminUser);
 
@@ -147,11 +149,12 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
             .FirstOrDefaultAsync(u => u.Username == request.Username && u.IsActive);
 
         if (user == null)
-            return BadRequest(new { message = "اسم المستخدم غير موجود" });
+            return BadRequest(new { message = "اسم المستخدم أو كلمة المرور غير صحيحة" });
 
         // ✅ 3. نتحقق من كلمة المرور
-        if (!VerifyPassword(request.Password, user.PasswordHash))
-            return BadRequest(new { message = "كلمة المرور غير صحيحة" });
+        var ok = VerifyPasswordAndMigrateIfNeeded(user, request.Password);
+        if (!ok)
+            return BadRequest(new { message = "اسم المستخدم أو كلمة المرور غير صحيحة" });
 
         // ✅ 4. نتحقق من الحالة
         if (!user.IsActive)
@@ -424,7 +427,8 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
                 }
 
                 // Verify current password
-                if (!VerifyPassword(request.CurrentPassword, user.PasswordHash))
+                var ok = VerifyPasswordAndMigrateIfNeeded(user, request.CurrentPassword);
+                if (!ok)
                 {
                     return BadRequest(new { message = "كلمة المرور الحالية غير صحيحة" });
                 }
@@ -447,21 +451,68 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
             return BCrypt.Net.BCrypt.HashPassword(password);
         }
 
-        private bool VerifyPassword(string enteredPassword, string storedHash)
+        private static bool IsBcryptHash(string hash) =>
+            !string.IsNullOrEmpty(hash) && (hash.StartsWith("$2a$") || hash.StartsWith("$2b$") || hash.StartsWith("$2y$"));
+
+        private static bool IsSha256Hex(string hash) =>
+            !string.IsNullOrEmpty(hash) && hash.Length == 64 && hash.All(Uri.IsHexDigit);
+
+        private static bool IsBase64String(string s)
         {
-            // Case 1: Old SHA256 hash (64 chars, no $2 prefix)
-            if (storedHash.Length == 64 && !storedHash.StartsWith("$2"))
+            if (string.IsNullOrEmpty(s)) return false;
+            s = s.Trim();
+            return (s.Length % 4 == 0) && Regex.IsMatch(s, @"^[A-Za-z0-9\+/]+={0,2}$");
+        }
+
+        private bool VerifyPasswordAndMigrateIfNeeded(User user, string enteredPassword)
+        {
+            var storedHash = user.PasswordHash ?? string.Empty;
+
+            // Case 1: BCrypt
+            if (IsBcryptHash(storedHash))
+                return BCrypt.Net.BCrypt.Verify(enteredPassword, storedHash);
+
+            // Case 2: Legacy SHA256 hex
+            if (IsSha256Hex(storedHash))
             {
-                using (var sha = SHA256.Create())
+                using var sha = SHA256.Create();
+                var hashBytes = sha.ComputeHash(Encoding.UTF8.GetBytes(enteredPassword));
+                var hex = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+
+                if (hex == storedHash)
                 {
-                    var hashBytes = sha.ComputeHash(Encoding.UTF8.GetBytes(enteredPassword));
-                    var hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
-                    return hash == storedHash;
+                    user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(enteredPassword);
+                    _context.SaveChanges();
+                    return true;
                 }
+                return false;
             }
 
-            // Case 2: New BCrypt hash
-            return BCrypt.Net.BCrypt.Verify(enteredPassword, storedHash);
+            // Case 3: Legacy SHA256 Base64
+            if (IsBase64String(storedHash))
+            {
+                using var sha = SHA256.Create();
+                var hashBytes = sha.ComputeHash(Encoding.UTF8.GetBytes(enteredPassword));
+                var base64 = Convert.ToBase64String(hashBytes);
+
+                if (base64 == storedHash)
+                {
+                    user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(enteredPassword);
+                    _context.SaveChanges();
+                    return true;
+                }
+                return false;
+            }
+
+            // Fallback: Try BCrypt anyway
+            try
+            {
+                return BCrypt.Net.BCrypt.Verify(enteredPassword, storedHash);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>
