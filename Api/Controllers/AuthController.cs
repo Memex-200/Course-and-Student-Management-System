@@ -41,37 +41,7 @@ public async Task<IActionResult> AdminLogin([FromBody] AdminLoginRequest request
 {
     try
     {
-        // أولوية لحساب الأدمن الأساسي الثابت (اختياري)
-        if (request.Username == "admin" && request.Password == "123456")
-        {
-            var defaultAdmin = await _context.Users
-                .Include(u => u.Branch)
-                .FirstOrDefaultAsync(u => u.Username == "admin" && u.IsActive);
-
-            if (defaultAdmin == null)
-            {
-                return BadRequest(new { message = "حساب المدير الافتراضي غير موجود" });
-            }
-
-            var defaultToken = GenerateJwtToken(defaultAdmin);
-            return Ok(new
-            {
-                success = true,
-                message = "تم تسجيل الدخول كمدير النظام",
-                token = defaultToken,
-                user = new
-                {
-                    id = defaultAdmin.Id,
-                    username = defaultAdmin.Username,
-                    fullName = defaultAdmin.FullName,
-                    role = defaultAdmin.Role.ToString(),
-                    branchId = defaultAdmin.BranchId,
-                    branchName = defaultAdmin.Branch?.Name
-                }
-            });
-        }
-
-        // لو مش الأدمن الأساسي، نفحص الأدمنز من قاعدة البيانات
+        // Find admin user in database
         var adminUser = await _context.Users
             .Include(u => u.Branch)
             .FirstOrDefaultAsync(u => u.Username == request.Username && u.IsActive);
@@ -82,7 +52,8 @@ public async Task<IActionResult> AdminLogin([FromBody] AdminLoginRequest request
         if (adminUser.Role != UserRole.Admin)
             return BadRequest(new { message = "هذا المستخدم ليس أدمن" });
 
-        var ok = VerifyPasswordAndMigrateIfNeeded(adminUser, request.Password);
+        // Verify password with enhanced fallback mechanism
+        var ok = VerifyPasswordWithEnhancedFallback(adminUser, request.Password);
         if (!ok)
             return BadRequest(new { message = "اسم المستخدم أو كلمة المرور غير صحيحة" });
 
@@ -98,7 +69,10 @@ public async Task<IActionResult> AdminLogin([FromBody] AdminLoginRequest request
                 id = adminUser.Id,
                 username = adminUser.Username,
                 fullName = adminUser.FullName,
-                role = adminUser.Role.ToString(),
+                email = adminUser.Email,
+                phone = adminUser.Phone,
+                address = adminUser.Address,
+                role = (int)adminUser.Role,
                 branchId = adminUser.BranchId,
                 branchName = adminUser.Branch?.Name
             }
@@ -115,35 +89,7 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
 {
     try
     {
-        // ✅ 1. لو المستخدم هو الأدمن الأساسي (افتراضي)
-        if (request.Username == "admin" && request.Password == "123456")
-        {
-            var defaultAdmin = await _context.Users
-                .Include(u => u.Branch)
-                .FirstOrDefaultAsync(u => u.Username == "admin" && u.IsActive);
-
-            if (defaultAdmin == null)
-                return BadRequest(new { message = "حساب المدير الافتراضي غير موجود" });
-
-            var token = GenerateJwtToken(defaultAdmin);
-            return Ok(new
-            {
-                success = true,
-                message = "تم تسجيل الدخول كمدير النظام",
-                token,
-                user = new
-                {
-                    id = defaultAdmin.Id,
-                    username = defaultAdmin.Username,
-                    fullName = defaultAdmin.FullName,
-                    role = defaultAdmin.Role.ToString(),
-                    branchId = defaultAdmin.BranchId,
-                    branchName = defaultAdmin.Branch?.Name
-                }
-            });
-        }
-
-        // ✅ 2. نحاول نجيب المستخدم من قاعدة البيانات
+        // Find user in database
         var user = await _context.Users
             .Include(u => u.Branch)
             .FirstOrDefaultAsync(u => u.Username == request.Username && u.IsActive);
@@ -151,19 +97,19 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
         if (user == null)
             return BadRequest(new { message = "اسم المستخدم أو كلمة المرور غير صحيحة" });
 
-        // ✅ 3. نتحقق من كلمة المرور
-        var ok = VerifyPasswordAndMigrateIfNeeded(user, request.Password);
+        // Verify password with enhanced fallback mechanism
+        var ok = VerifyPasswordWithEnhancedFallback(user, request.Password);
         if (!ok)
             return BadRequest(new { message = "اسم المستخدم أو كلمة المرور غير صحيحة" });
 
-        // ✅ 4. نتحقق من الحالة
+        // Check if account is active
         if (!user.IsActive)
             return BadRequest(new { message = "الحساب غير مفعل" });
 
-        // ✅ 5. نولّد JWT Token
+        // Generate JWT Token
         var jwtToken = GenerateJwtToken(user);
 
-        // ✅ 6. نرجع التفاصيل حسب الدور
+        // Return response based on user role
         string roleMessage = user.Role switch
         {
             UserRole.Admin => "تم تسجيل الدخول كأدمن",
@@ -182,7 +128,10 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
                 id = user.Id,
                 username = user.Username,
                 fullName = user.FullName,
-                role = user.Role.ToString(),
+                email = user.Email,
+                phone = user.Phone,
+                address = user.Address,
+                role = (int)user.Role,
                 branchId = user.BranchId,
                 branchName = user.Branch?.Name
             }
@@ -197,6 +146,7 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
 
 
         [HttpPost("register")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
             try
@@ -244,20 +194,21 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
                 // Return the same format as login endpoint
                 return Ok(new
                 {
+                    success = true,
+                    message = "تم إنشاء الحساب بنجاح",
                     token,
                     user = new
                     {
-                        user.Id,
-                        user.Username,
-                        user.FullName,
-                        user.Email,
-                        user.Phone,
-                        user.Address,
-                        Role = (int)user.UserRole, // Changed from UserRole to Role to match frontend
-                        Branch = branch?.Name,
-                        user.BranchId
-                    },
-                    message = "تم إنشاء الحساب بنجاح"
+                        id = user.Id,
+                        username = user.Username,
+                        fullName = user.FullName,
+                        email = user.Email,
+                        phone = user.Phone,
+                        address = user.Address,
+                        role = (int)user.Role,
+                        branchId = user.BranchId,
+                        branchName = branch?.Name
+                    }
                 });
             }
             catch (Exception ex)
@@ -303,18 +254,20 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
 
                 return Ok(new
                 {
+                    success = true,
+                    message = "تم تحديث البيانات بنجاح",
                     token,
                     user = new
                     {
-                        user.Id,
-                        user.Username,
-                        user.FullName,
-                        user.Email,
-                        user.Phone,
-                        user.Address,
-                        Role = (int)user.Role,
-                        Branch = user.Branch?.Name,
-                        user.BranchId
+                        id = user.Id,
+                        username = user.Username,
+                        fullName = user.FullName,
+                        email = user.Email,
+                        phone = user.Phone,
+                        address = user.Address,
+                        role = (int)user.Role,
+                        branchId = user.BranchId,
+                        branchName = user.Branch?.Name
                     }
                 });
             }
@@ -347,19 +300,20 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
 
                 return Ok(new
                 {
+                    success = true,
                     message = "تم تحديث دور المستخدم بنجاح",
                     token,
                     user = new
                     {
-                        user.Id,
-                        user.Username,
-                        user.FullName,
-                        user.Email,
-                        user.Phone,
-                        user.Address,
-                        UserRole = (int)user.UserRole,
-                        Branch = user.Branch?.Name,
-                        user.BranchId
+                        id = user.Id,
+                        username = user.Username,
+                        fullName = user.FullName,
+                        email = user.Email,
+                        phone = user.Phone,
+                        address = user.Address,
+                        role = (int)user.Role,
+                        branchId = user.BranchId,
+                        branchName = user.Branch?.Name
                     }
                 });
             }
@@ -427,7 +381,7 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
                 }
 
                 // Verify current password
-                var ok = VerifyPasswordAndMigrateIfNeeded(user, request.CurrentPassword);
+                var ok = VerifyPasswordWithEnhancedFallback(user, request.CurrentPassword);
                 if (!ok)
                 {
                     return BadRequest(new { message = "كلمة المرور الحالية غير صحيحة" });
@@ -516,11 +470,167 @@ public async Task<IActionResult> Login([FromBody] LoginRequest request)
         }
 
         /// <summary>
+        /// Enhanced password verification with comprehensive fallback support
+        /// Handles BCrypt, SHA256 hex, SHA256 Base64, and plain text migration
+        /// </summary>
+        private bool VerifyPasswordWithEnhancedFallback(User user, string enteredPassword)
+        {
+            var storedHash = user.PasswordHash ?? string.Empty;
+
+            // Case 1: BCrypt verification (primary method)
+            if (IsBcryptHash(storedHash))
+            {
+                try
+                {
+                    return BCrypt.Net.BCrypt.Verify(enteredPassword, storedHash);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"BCrypt verification failed for user {user.Username}: {ex.Message}");
+                    return false;
+                }
+            }
+
+            // Case 2: Legacy SHA256 hex verification
+            if (IsSha256Hex(storedHash))
+            {
+                using var sha = SHA256.Create();
+                var hashBytes = sha.ComputeHash(Encoding.UTF8.GetBytes(enteredPassword));
+                var hex = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+
+                if (hex == storedHash)
+                {
+                    // Migrate to BCrypt and save
+                    user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(enteredPassword);
+                    _context.SaveChanges();
+                    _logger.LogInformation($"Migrated SHA256 hex password for user {user.Username} to BCrypt");
+                    return true;
+                }
+                return false;
+            }
+
+            // Case 3: Legacy SHA256 Base64 verification
+            if (IsBase64String(storedHash))
+            {
+                using var sha = SHA256.Create();
+                var hashBytes = sha.ComputeHash(Encoding.UTF8.GetBytes(enteredPassword));
+                var base64 = Convert.ToBase64String(hashBytes);
+
+                if (base64 == storedHash)
+                {
+                    // Migrate to BCrypt and save
+                    user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(enteredPassword);
+                    _context.SaveChanges();
+                    _logger.LogInformation($"Migrated SHA256 Base64 password for user {user.Username} to BCrypt");
+                    return true;
+                }
+                return false;
+            }
+
+            // Case 4: Plain text comparison (for emergency admin access)
+            // This should only be used for initial admin setup
+            if (storedHash == enteredPassword)
+            {
+                // Immediately migrate to BCrypt
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(enteredPassword);
+                _context.SaveChanges();
+                _logger.LogWarning($"Migrated plain text password for user {user.Username} to BCrypt - SECURITY RISK RESOLVED");
+                return true;
+            }
+
+            // Case 5: Try BCrypt verification as fallback (in case hash format is unrecognized)
+            try
+            {
+                var result = BCrypt.Net.BCrypt.Verify(enteredPassword, storedHash);
+                if (result)
+                {
+                    _logger.LogInformation($"BCrypt verification succeeded for user {user.Username} with unrecognized hash format");
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"All password verification methods failed for user {user.Username}: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Check if current user has admin access
+        /// </summary>
+        [HttpGet("check-admin-access")]
+        [Authorize]
+        public IActionResult CheckAdminAccess()
+        {
+            try
+            {
+                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var username = User.FindFirst(ClaimTypes.Name)?.Value;
+
+                var isAdmin = userRole == "Admin";
+                
+                return Ok(new
+                {
+                    success = true,
+                    isAdmin = isAdmin,
+                    userRole = userRole,
+                    userId = userId,
+                    username = username,
+                    message = isAdmin ? "Admin access granted" : "Admin access denied"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking admin access");
+                return StatusCode(500, new { message = "حدث خطأ في الخادم" });
+            }
+        }
+
+        /// <summary>
+        /// Get admin dashboard data - Admin only
+        /// </summary>
+        [HttpGet("admin-dashboard")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAdminDashboard()
+        {
+            try
+            {
+                var totalUsers = await _context.Users.CountAsync();
+                var totalStudents = await _context.Users.CountAsync(u => u.Role == UserRole.Student);
+                var totalEmployees = await _context.Users.CountAsync(u => u.Role == UserRole.Employee);
+                var totalAdmins = await _context.Users.CountAsync(u => u.Role == UserRole.Admin);
+                var activeUsers = await _context.Users.CountAsync(u => u.IsActive);
+
+                return Ok(new
+                {
+                    success = true,
+                    data = new
+                    {
+                        totalUsers,
+                        totalStudents,
+                        totalEmployees,
+                        totalAdmins,
+                        activeUsers,
+                        inactiveUsers = totalUsers - activeUsers
+                    },
+                    message = "Admin dashboard data retrieved successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting admin dashboard data");
+                return StatusCode(500, new { message = "حدث خطأ في الخادم" });
+            }
+        }
+
+        /// <summary>
         /// TEMPORARY ENDPOINT - ONE-TIME PASSWORD REHASHING
         /// This endpoint rehashes all admin user passwords using BCrypt.
         /// Should be removed after running once for security reasons.
         /// </summary>
         [HttpGet("rehash-admins")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RehashAdminPasswords()
         {
             try
