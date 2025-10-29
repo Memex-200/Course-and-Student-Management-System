@@ -113,6 +113,10 @@ const StudentForm: React.FC = () => {
   const onSubmit = async (data: StudentFormData) => {
     setIsSubmitting(true);
     try {
+      if (!selectedBranch) {
+        toast.error("يرجى اختيار الفرع");
+        return;
+      }
       const formData = {
         // Map frontend field names to backend field names
         FullName: data.fullName,
@@ -127,6 +131,7 @@ const StudentForm: React.FC = () => {
         EmergencyContact: "",
         EmergencyPhone: "",
         MedicalConditions: "",
+        BranchId: selectedBranch,
       };
 
       // Debug logging

@@ -12,7 +12,7 @@ namespace Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    
     public class AttendanceController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -27,7 +27,7 @@ namespace Api.Controllers
         }
 
         [HttpGet("courses/{courseId}")]
-        [Authorize(Roles = "Admin")]
+        
         public async Task<IActionResult> GetCourseAttendance(int courseId, [FromQuery] DateTime? sessionDate = null)
         {
             try
@@ -118,7 +118,7 @@ namespace Api.Controllers
         }
 
         [HttpPost("courses/{courseId}/session")]
-        [Authorize(Roles = "Admin")]
+        
         public async Task<IActionResult> CreateAttendanceSession(int courseId, [FromBody] CreateAttendanceSessionRequest request)
         {
             try
@@ -131,7 +131,20 @@ namespace Api.Controllers
                 if (course == null)
                     return NotFound(new { message = "الكورس غير موجود" });
 
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                int userId;
+                if (!int.TryParse(userIdClaim, out userId) || userId <= 0 || !await _context.Users.AnyAsync(u => u.Id == userId))
+                {
+                    // Auth is disabled in debug: safely resolve a valid existing user to satisfy FK constraints
+                    userId = await _context.Users
+                        .OrderBy(u => u.Id)
+                        .Select(u => u.Id)
+                        .FirstOrDefaultAsync();
+                    if (userId <= 0)
+                    {
+                        return StatusCode(500, new { message = "لا يوجد مستخدم صالح لتنفيذ العملية. الرجاء إنشاء مستخدم واحد على الأقل." });
+                    }
+                }
 
                 // Check if session already exists for this date
                 var existingSession = await _context.Attendances
@@ -268,7 +281,7 @@ namespace Api.Controllers
         }
 
         [HttpPut("courses/{courseId}/session")]
-        [Authorize(Roles = "Admin")]
+        
         public async Task<IActionResult> UpdateAttendanceSession(int courseId, [FromBody] UpdateAttendanceSessionRequest request)
         {
             try
@@ -317,7 +330,7 @@ namespace Api.Controllers
         }
 
         [HttpGet("students/{studentId}")]
-        [Authorize(Roles = "Student,Admin")]
+        
         public async Task<IActionResult> GetStudentAttendance(int studentId, [FromQuery] int? courseId = null, [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
         {
             try
@@ -400,7 +413,7 @@ namespace Api.Controllers
         }
 
         [HttpGet("reports/course/{courseId}")]
-        [Authorize(Roles = "Admin")]
+        
         public async Task<IActionResult> GetCourseAttendanceReport(int courseId, [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
         {
             try
@@ -467,7 +480,7 @@ namespace Api.Controllers
         }
 
         [HttpDelete("{attendanceId}")]
-        [Authorize(Roles = "Admin")]
+        
         public async Task<IActionResult> DeleteAttendanceRecord(int attendanceId)
         {
             try

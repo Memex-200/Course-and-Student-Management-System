@@ -42,6 +42,7 @@ interface StudentDashboardData {
   outstandingBalance: number;
   paymentHistory: any[];
   courses: StudentCourse[];
+  isNewStudent?: boolean;
 }
 
 const StudentDashboard: React.FC = () => {
@@ -59,7 +60,12 @@ const StudentDashboard: React.FC = () => {
   const fetchStudentDashboard = async () => {
     try {
       setError(null);
-      const response = await axios.get("/students/my-dashboard");
+      const sid =
+        user?.studentId ||
+        JSON.parse(localStorage.getItem("user") || "{}")?.studentId;
+      const response = await axios.get("/students/my-dashboard", {
+        params: sid ? { studentId: sid } : undefined,
+      });
       if (response.data.success) {
         setStudentInfo(response.data.data);
       } else {
@@ -114,6 +120,105 @@ const StudentDashboard: React.FC = () => {
           >
             إعادة المحاولة
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle new student case (no courses enrolled yet)
+  if (studentInfo?.isNewStudent) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-secondary-900 via-secondary-800 to-secondary-900 p-6">
+        <div className="max-w-4xl mx-auto">
+          {/* Welcome Header */}
+          <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-3xl p-8 mb-8 shadow-2xl">
+            <div className="text-center">
+              <h1 className="text-4xl font-bold text-white mb-4">
+                مرحباً، {studentInfo.studentName}!
+              </h1>
+              <p className="text-primary-100 text-lg">
+                أهلاً وسهلاً بك في منصة الذكاء الاصطناعي والروبوتات
+              </p>
+            </div>
+          </div>
+
+          {/* Welcome Message */}
+          <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-sm rounded-2xl p-8 border border-blue-500/30 mb-8">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <span className="text-4xl">🎓</span>
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-4">
+                مرحباً بك في رحلتك التعليمية!
+              </h2>
+              <p className="text-blue-200 text-lg mb-6 leading-relaxed">
+                يبدو أنك لم تسجل في أي كورسات بعد. نحن متحمسون لمساعدتك في بدء
+                رحلتك في عالم الذكاء الاصطناعي والروبوتات.
+              </p>
+              <div className="bg-blue-600/20 rounded-lg p-4 mb-6">
+                <p className="text-blue-100">
+                  <strong>للبدء:</strong> تواصل مع الإدارة للتسجيل في الكورسات
+                  المتاحة واكتشف عالم التقنية المذهل!
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Stats for New Student */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-secondary-800/50 backdrop-blur-sm rounded-2xl p-6 border border-primary-500/20 text-center">
+              <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">📚</span>
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                الكورسات المتاحة
+              </h3>
+              <p className="text-primary-300">
+                اكتشف مجموعة متنوعة من الكورسات
+              </p>
+            </div>
+
+            <div className="bg-secondary-800/50 backdrop-blur-sm rounded-2xl p-6 border border-primary-500/20 text-center">
+              <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🎯</span>
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                تعلم متخصص
+              </h3>
+              <p className="text-primary-300">محتوى تعليمي عالي الجودة</p>
+            </div>
+
+            <div className="bg-secondary-800/50 backdrop-blur-sm rounded-2xl p-6 border border-primary-500/20 text-center">
+              <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🏆</span>
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                شهادات معتمدة
+              </h3>
+              <p className="text-primary-300">احصل على شهادات معتمدة</p>
+            </div>
+          </div>
+
+          {/* Contact Information */}
+          <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 backdrop-blur-sm rounded-2xl p-6 border border-green-500/30">
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-white mb-4">
+                هل أنت مستعد للبدء؟
+              </h3>
+              <p className="text-green-200 mb-4">
+                تواصل معنا الآن للتسجيل في الكورسات المتاحة وابدأ رحلتك
+                التعليمية
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium">
+                  📞 تواصل مع الإدارة
+                </button>
+                <button className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium">
+                  📋 عرض الكورسات المتاحة
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

@@ -57,25 +57,34 @@ const ExpensesPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      console.log("=== Starting fetchTransactions ===");
+      console.log("Date filters:", { dateFrom, dateTo });
+      
       // Try to get transactions from the main endpoint
       let result = await paymentsAPI.getAllTransactions({
         startDate: dateFrom || undefined,
         endDate: dateTo || undefined,
       });
 
+      console.log("Main endpoint result:", result);
+
       // If no data, try alternative endpoint
       if (result.transactions.length === 0) {
-        console.log(
-          "No transactions from main endpoint, trying alternative..."
-        );
+        console.log("No transactions from main endpoint, trying alternative...");
         result = await paymentsAPI.getAlternativeTransactions();
+        console.log("Alternative endpoint result:", result);
       }
 
       setTransactions(result.transactions);
       setSummary(result.summary);
 
-      console.log("Processed transactions:", result.transactions);
-      console.log("Summary from API:", result.summary);
+      console.log("Final processed transactions:", result.transactions.length);
+      console.log("Final summary:", result.summary);
+      
+      // Show user-friendly message if no data
+      if (result.transactions.length === 0) {
+        console.log("No transactions found - this might be expected if no payments exist yet");
+      }
     } catch (error) {
       console.error("Error fetching transactions:", error);
       // Try alternative endpoint as fallback
@@ -84,6 +93,7 @@ const ExpensesPage: React.FC = () => {
         const result = await paymentsAPI.getAlternativeTransactions();
         setTransactions(result.transactions);
         setSummary(result.summary);
+        console.log("Fallback successful:", result);
       } catch (altError) {
         console.error("Alternative endpoint also failed:", altError);
         setError("خطأ في تحميل البيانات - يرجى المحاولة مرة أخرى");
@@ -334,6 +344,29 @@ const ExpensesPage: React.FC = () => {
             >
               <FileDown className="w-4 h-4" />
               <span>تصدير إكسل</span>
+            </button>
+
+            <button
+              onClick={async () => {
+                console.log("=== DEBUG INFO ===");
+                console.log("Current transactions:", transactions);
+                console.log("Current summary:", summary);
+                console.log("Filtered transactions:", filtered);
+                console.log("Loading state:", loading);
+                console.log("Error state:", error);
+                
+                // Test API endpoints directly
+                try {
+                  const debugResponse = await fetch('/api/payments/debug-simple');
+                  const debugData = await debugResponse.json();
+                  console.log("Debug API response:", debugData);
+                } catch (err) {
+                  console.error("Debug API error:", err);
+                }
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <span>Debug</span>
             </button>
           </div>
         </div>

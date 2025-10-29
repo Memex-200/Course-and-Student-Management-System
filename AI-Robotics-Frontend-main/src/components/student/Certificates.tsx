@@ -18,7 +18,10 @@ const Certificates: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await axios.get("/students/my-dashboard");
+        const sid = JSON.parse(localStorage.getItem("user") || "{}")?.studentId;
+        const res = await axios.get("/students/my-dashboard", {
+          params: sid ? { studentId: sid } : undefined,
+        });
         if (res.data?.success) {
           const certs = (res.data.data.certificates || []).map((c: any) => ({
             id: c.id,

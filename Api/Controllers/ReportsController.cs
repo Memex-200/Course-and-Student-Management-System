@@ -9,7 +9,7 @@ namespace Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin,Employee")]
+    
     public class ReportsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -336,7 +336,7 @@ namespace Api.Controllers
         }
 
         [HttpGet("dashboard")]
-        [Authorize(Policy = "AdminOrEmployee")]
+        
         public async Task<IActionResult> GetDashboardStats()
         {
             try

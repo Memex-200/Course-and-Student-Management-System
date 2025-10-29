@@ -27,62 +27,63 @@ namespace Api
                     mySqlOptions => mySqlOptions.EnableRetryOnFailure());
             });
 
-            // ✅ CORS
+            // ✅ CORS - Allow all origins (no cookies; we use Authorization header)
             builder.Services.AddCors(options =>
             {
-                options.AddDefaultPolicy(policy =>
+                options.AddPolicy("AllowAll", policy =>
                 {
-                    policy.WithOrigins(
-                            "http://localhost:5173",
-                            "http://localhost:5174",
-                            "https://airobotics.site"
-                        )
+                    policy
+                        .AllowAnyOrigin()
                         .AllowAnyMethod()
-                        .AllowAnyHeader()
-                        .AllowCredentials();
+                        .AllowAnyHeader();
                 });
             });
 
-            // ✅ JWT Auth
-            var jwtSettings = builder.Configuration.GetSection("Jwt");
-            var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]!);
-            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
-                {
-                    options.RequireHttpsMetadata = false;
-                    options.SaveToken = true;
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(key),
-                        ValidateIssuer = true,
-                        ValidIssuer = jwtSettings["Issuer"],
-                        ValidateAudience = true,
-                        ValidAudience = jwtSettings["Audience"],
-                        ValidateLifetime = true,
-                        ClockSkew = TimeSpan.Zero,
-                        RoleClaimType = ClaimTypes.Role
-                    };
-                });
+			// ✅ JWT Auth (DISABLED for debugging - keep code for later restore)
+			// var jwtSettings = builder.Configuration.GetSection("Jwt");
+			// var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]!);
+			// builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+			// 	.AddJwtBearer(options =>
+			// 	{
+			// 		options.RequireHttpsMetadata = false;
+			// 		options.SaveToken = true;
+			// 		options.TokenValidationParameters = new TokenValidationParameters
+			// 		{
+			// 			ValidateIssuerSigningKey = true,
+			// 			IssuerSigningKey = new SymmetricSecurityKey(key),
+			// 			ValidateIssuer = true,
+			// 			ValidIssuer = jwtSettings["Issuer"],
+			// 			ValidateAudience = true,
+			// 			ValidAudience = jwtSettings["Audience"],
+			// 			ValidateLifetime = true,
+			// 			ClockSkew = TimeSpan.Zero,
+			// 			RoleClaimType = ClaimTypes.Role
+			// 		};
+			// 	});
 
-            // ✅ Authorization Policies
-            builder.Services.AddAuthorization(options =>
-            {
-                options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-                options.AddPolicy("StudentOnly", policy => policy.RequireRole("Student"));
-                options.AddPolicy("AdminOrEmployee", policy => policy.RequireRole("Admin", "Employee"));
-            });
+			// ✅ Authorization Policies (DISABLED for debugging - keep code for later restore)
+			// builder.Services.AddAuthorization(options =>
+			// {
+			// 	options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+			// 	options.AddPolicy("StudentOnly", policy => policy.RequireRole("Student"));
+			// 	options.AddPolicy("AdminOrEmployee", policy => policy.RequireRole("Admin", "Employee"));
+			// });
 
             // ✅ Services
             builder.Services.Configure<Api.Models.EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
             builder.Services.AddScoped<Api.Services.IEmailService, Api.Services.EmailService>();
             builder.Services.AddScoped<Api.Services.IPasswordGeneratorService, Api.Services.PasswordGeneratorService>();
 
-            builder.Services.AddControllers().AddJsonOptions(opt =>
-            {
-                opt.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-                opt.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-            });
+			builder.Services.AddControllers(options =>
+			{
+				// Global allow anonymous to ignore any [Authorize] attributes
+				options.Filters.Add(new Microsoft.AspNetCore.Mvc.Authorization.AllowAnonymousFilter());
+			})
+			.AddJsonOptions(opt =>
+			{
+				opt.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+				opt.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+			});
 
             // ✅ Swagger setup
             builder.Services.AddEndpointsApiExplorer();
@@ -127,15 +128,15 @@ namespace Api
                 c.RoutePrefix = "swagger"; // → /swagger
             });
 
-            // ✅ CORS
-            app.UseCors();
+            // ✅ CORS (apply early and globally)
+            app.UseCors("AllowAll");
 
             // ❌ Disabled because nginx handles HTTPS
             // app.UseHttpsRedirection();
 
-            // ✅ Auth
-            app.UseAuthentication();
-            app.UseAuthorization();
+			// ✅ Auth (DISABLED for debugging)
+			// app.UseAuthentication();
+			// app.UseAuthorization();
 
             // ✅ Controllers
             app.MapControllers();

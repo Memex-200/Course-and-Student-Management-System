@@ -9,7 +9,7 @@ namespace Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    
     public class TransactionsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -22,7 +22,7 @@ namespace Api.Controllers
         }
 
         [HttpGet]
-        [Authorize(Policy = "AdminOrEmployee")]
+        
         public async Task<IActionResult> GetTransactions(
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null,

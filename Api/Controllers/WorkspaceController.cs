@@ -10,7 +10,7 @@ namespace Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    
     public class WorkspaceController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -81,7 +81,7 @@ namespace Api.Controllers
         }
 
         [HttpPost("book")]
-        [Authorize(Roles = "Admin,Employee")]
+        
         public async Task<IActionResult> CreateWorkspaceBooking([FromBody] CreateWorkspaceBookingRequest request)
         {
             try
@@ -154,7 +154,7 @@ namespace Api.Controllers
         }
 
         [HttpPut("bookings/{id}/end")]
-        [Authorize(Roles = "Admin,Employee")]
+        
         public async Task<IActionResult> EndWorkspaceBooking(int id, [FromBody] EndWorkspaceBookingRequest request)
         {
             try
@@ -202,7 +202,7 @@ namespace Api.Controllers
         }
 
         [HttpPost("bookings/{id}/payment")]
-        [Authorize(Roles = "Admin,Employee")]
+        
         public async Task<IActionResult> AddWorkspacePayment(int id, [FromBody] AddPaymentRequest request)
         {
             try

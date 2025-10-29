@@ -1,6 +1,7 @@
 // API Configuration
+// Default BASE_URL to "/api" when VITE_API_URL is not provided so Vite proxy works in dev
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_URL,
+  BASE_URL: import.meta.env.VITE_API_URL || "/api",
   TIMEOUT: 10000,
 };
 

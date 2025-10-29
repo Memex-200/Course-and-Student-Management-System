@@ -14,6 +14,7 @@ import {
   Plus,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { API_CONFIG } from "../../config/api";
 import { Link } from "react-router-dom";
 
 // Course Registration Modal Component
@@ -43,7 +44,7 @@ const CourseRegistrationModal: React.FC<{
   const fetchCourses = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/courses`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/courses`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -64,7 +65,7 @@ const CourseRegistrationModal: React.FC<{
 
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/students/${studentId}/register-course`,
+        `${API_CONFIG.BASE_URL}/students/${studentId}/register-course`,
         {
           method: "POST",
           headers: {

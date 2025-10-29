@@ -17,159 +17,188 @@ namespace Api.Scripts
         {
             try
             {
-                Console.WriteLine("Adding sample payment data...");
-
-                // Get existing students
-                var students = await _context.Students.Take(5).ToListAsync();
-                if (!students.Any())
+                // Get the first branch
+                var branch = await _context.Branches.FirstOrDefaultAsync();
+                if (branch == null)
                 {
-                    Console.WriteLine("No students found. Please add students first.");
-                    return;
-                }
-
-                // Get existing courses
-                var courses = await _context.Courses.Take(3).ToListAsync();
-                if (!courses.Any())
-                {
-                    Console.WriteLine("No courses found. Please add courses first.");
-                    return;
-                }
-
-                // Get admin user for processing payments
-                var adminUser = await _context.Users.FirstOrDefaultAsync(u => u.UserRole == UserRole.Admin);
-                if (adminUser == null)
-                {
-                    Console.WriteLine("No admin user found. Please create an admin user first.");
-                    return;
-                }
-
-                var paymentMethods = new[] { PaymentMethod.Cash, PaymentMethod.InstaPay, PaymentMethod.Fawry };
-                var random = new Random();
-
-                foreach (var student in students)
-                {
-                    // Create course registration for each student
-                    var course = courses[random.Next(courses.Count)];
-                    var totalAmount = random.Next(500, 1500);
-                    
-                    var registration = new CourseRegistration
+                    // Create a sample branch if none exists
+                    branch = new Branch
                     {
-                        StudentId = student.Id,
-                        CourseId = course.Id,
-                        TotalAmount = totalAmount,
-                        PaidAmount = 0,
-                        PaymentStatus = PaymentStatus.Unpaid,
-                        RegistrationDate = DateTime.UtcNow.AddDays(-random.Next(1, 30)),
+                        Name = "أسيوط",
+                        Address = "شارع الجامعة، أسيوط",
+                        Phone = "01234567890",
                         IsActive = true,
                         CreatedAt = DateTime.UtcNow
                     };
-
-                    _context.CourseRegistrations.Add(registration);
+                    _context.Branches.Add(branch);
                     await _context.SaveChangesAsync();
-
-                    // Add multiple payments for each registration
-                    var remainingAmount = totalAmount;
-                    var paymentCount = random.Next(1, 4);
-
-                    for (int i = 0; i < paymentCount && remainingAmount > 0; i++)
-                    {
-                        var paymentAmount = i == paymentCount - 1 ? remainingAmount : random.Next(100, Math.Min(remainingAmount, 500));
-                        
-                        var payment = new Payment
-                        {
-                            StudentId = student.Id,
-                            CourseRegistrationId = registration.Id,
-                            Amount = paymentAmount,
-                            PaymentMethod = paymentMethods[random.Next(paymentMethods.Length)],
-                            PaymentType = PaymentType.CourseFee,
-                            PaymentDate = DateTime.UtcNow.AddDays(-random.Next(1, 15)),
-                            ProcessedByUserId = adminUser.Id,
-                            Notes = $"دفعة {i + 1} لكورس {course.Name}",
-                            IsActive = true,
-                            CreatedAt = DateTime.UtcNow
-                        };
-
-                        _context.Payments.Add(payment);
-                        remainingAmount -= paymentAmount;
-                    }
-
-                    // Update registration with paid amount
-                    var totalPaid = totalAmount - remainingAmount;
-                    registration.PaidAmount = totalPaid;
-                    registration.PaymentDate = DateTime.UtcNow.AddDays(-random.Next(1, 10));
-                    registration.PaymentMethod = paymentMethods[random.Next(paymentMethods.Length)];
-
-                    if (totalPaid >= totalAmount)
-                        registration.PaymentStatus = PaymentStatus.FullyPaid;
-                    else if (totalPaid > 0)
-                        registration.PaymentStatus = PaymentStatus.PartiallyPaid;
-
-                    Console.WriteLine($"Added payments for student {student.FullName}: {totalPaid} EGP out of {totalAmount} EGP");
                 }
 
-                // Add some expenses (negative amounts for expenses page)
-                var expenseCategories = new[] { 
-                    ExpenseCategory.Equipment, 
-                    ExpenseCategory.Supplies, 
-                    ExpenseCategory.Maintenance,
-                    ExpenseCategory.Marketing
-                };
-
-                for (int i = 0; i < 5; i++)
+                // Get or create a sample user
+                var user = await _context.Users.FirstOrDefaultAsync();
+                if (user == null)
                 {
-                    var expense = new Expense
+                    user = new User
                     {
-                        Title = $"مصروف تجريبي {i + 1}",
-                        Description = $"وصف المصروف التجريبي رقم {i + 1}",
-                        Amount = -random.Next(100, 1000), // Negative for expenses
-                        ExpenseDate = DateTime.UtcNow.AddDays(-random.Next(1, 30)),
-                        Category = expenseCategories[random.Next(expenseCategories.Length)],
-                        Status = ExpenseStatus.Paid,
-                        Priority = ExpensePriority.Medium,
-                        PaymentMethod = paymentMethods[random.Next(paymentMethods.Length)],
-                        BranchId = 1, // Assiut branch
-                        RequestedByUserId = adminUser.Id,
-                        ApprovedByUserId = adminUser.Id,
-                        ApprovedAt = DateTime.UtcNow,
-                        Notes = $"مصروف تجريبي للاختبار",
-                        CreatedAt = DateTime.UtcNow,
-                        Vendor = $"مورد تجريبي {i + 1}"
+                        Username = "admin",
+                        Email = "admin@airobotics.com",
+                        FullName = "مدير النظام",
+                        Role = UserRole.Admin,
+                        BranchId = branch.Id,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
                     };
-
-                    _context.Expenses.Add(expense);
+                    _context.Users.Add(user);
+                    await _context.SaveChangesAsync();
                 }
+
+                // Get or create a sample course
+                var course = await _context.Courses.FirstOrDefaultAsync();
+                if (course == null)
+                {
+                    course = new Course
+                    {
+                        Name = "دورة الذكاء الاصطناعي",
+                        Description = "دورة شاملة في الذكاء الاصطناعي",
+                        SessionsCount = 40,
+                        Price = 2000,
+                        BranchId = branch.Id,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Courses.Add(course);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Get or create a sample student
+                var student = await _context.Students.FirstOrDefaultAsync();
+                if (student == null)
+                {
+                    student = new Student
+                    {
+                        FullName = "أحمد محمد علي",
+                        Phone = "01234567890",
+                        Email = "ahmed@example.com",
+                        BranchId = branch.Id,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Students.Add(student);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Create course registration
+                var registration = new CourseRegistration
+                {
+                    StudentId = student.Id,
+                    CourseId = course.Id,
+                    TotalAmount = course.Price,
+                    PaidAmount = 1000, // Partial payment
+                    PaymentStatus = PaymentStatus.PartiallyPaid,
+                    PaymentMethod = PaymentMethod.Cash,
+                    PaymentDate = DateTime.UtcNow.AddDays(-5),
+                    RegistrationDate = DateTime.UtcNow.AddDays(-10),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.CourseRegistrations.Add(registration);
+                await _context.SaveChangesAsync();
+
+                // Create payment record
+                var payment = new Payment
+                {
+                    StudentId = student.Id,
+                    CourseRegistrationId = registration.Id,
+                    BranchId = branch.Id,
+                    Amount = 1000,
+                    PaymentMethod = PaymentMethod.Cash,
+                    PaymentType = PaymentType.CourseFee,
+                    PaymentSource = PaymentSource.CourseFee,
+                    PaymentDate = DateTime.UtcNow.AddDays(-5),
+                    ProcessedByUserId = user.Id,
+                    Notes = "دفعة جزئية للدورة",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Payments.Add(payment);
+
+                // Create another payment record
+                var payment2 = new Payment
+                {
+                    StudentId = student.Id,
+                    CourseRegistrationId = registration.Id,
+                    BranchId = branch.Id,
+                    Amount = 500,
+                    PaymentMethod = PaymentMethod.InstaPay,
+                    PaymentType = PaymentType.CourseFee,
+                    PaymentSource = PaymentSource.CourseFee,
+                    PaymentDate = DateTime.UtcNow.AddDays(-2),
+                    ProcessedByUserId = user.Id,
+                    Notes = "دفعة إضافية",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Payments.Add(payment2);
+
+                // Create another student and course registration
+                var student2 = new Student
+                {
+                    FullName = "فاطمة أحمد",
+                    Phone = "01234567891",
+                    Email = "fatma@example.com",
+                    BranchId = branch.Id,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Students.Add(student2);
+                await _context.SaveChangesAsync();
+
+                var registration2 = new CourseRegistration
+                {
+                    StudentId = student2.Id,
+                    CourseId = course.Id,
+                    TotalAmount = course.Price,
+                    PaidAmount = course.Price, // Full payment
+                    PaymentStatus = PaymentStatus.FullyPaid,
+                    PaymentMethod = PaymentMethod.Fawry,
+                    PaymentDate = DateTime.UtcNow.AddDays(-1),
+                    RegistrationDate = DateTime.UtcNow.AddDays(-3),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.CourseRegistrations.Add(registration2);
+                await _context.SaveChangesAsync();
+
+                var payment3 = new Payment
+                {
+                    StudentId = student2.Id,
+                    CourseRegistrationId = registration2.Id,
+                    BranchId = branch.Id,
+                    Amount = course.Price,
+                    PaymentMethod = PaymentMethod.Fawry,
+                    PaymentType = PaymentType.CourseFee,
+                    PaymentSource = PaymentSource.CourseFee,
+                    PaymentDate = DateTime.UtcNow.AddDays(-1),
+                    ProcessedByUserId = user.Id,
+                    Notes = "دفعة كاملة للدورة",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Payments.Add(payment3);
 
                 await _context.SaveChangesAsync();
-                Console.WriteLine("Successfully added sample payment data!");
 
-                // Print summary
-                var totalPayments = await _context.Payments.CountAsync();
-                var totalExpenses = await _context.Expenses.CountAsync();
-                var totalRegistrations = await _context.CourseRegistrations.CountAsync();
-
-                Console.WriteLine($"Summary:");
-                Console.WriteLine($"Total payments: {totalPayments}");
-                Console.WriteLine($"Total expenses: {totalExpenses}");
-                Console.WriteLine($"Total registrations: {totalRegistrations}");
-
-                // Show some sample data
-                var recentPayments = await _context.Payments
-                    .Include(p => p.Student)
-                    .Include(p => p.CourseRegistration)
-                        .ThenInclude(cr => cr.Course)
-                    .OrderByDescending(p => p.PaymentDate)
-                    .Take(3)
-                    .ToListAsync();
-
-                Console.WriteLine("\nRecent payments:");
-                foreach (var payment in recentPayments)
-                {
-                    Console.WriteLine($"- {payment.Student?.FullName}: {payment.Amount} EGP for {payment.CourseRegistration?.Course?.Name}");
-                }
+                Console.WriteLine("Sample payment data created successfully!");
+                Console.WriteLine($"Created {3} payment records");
+                Console.WriteLine($"Created {2} course registrations");
+                Console.WriteLine($"Created {2} students");
+                Console.WriteLine($"Created {1} course");
+                Console.WriteLine($"Created {1} branch");
+                Console.WriteLine($"Created {1} user");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"Error creating sample data: {ex.Message}");
                 throw;
             }
         }

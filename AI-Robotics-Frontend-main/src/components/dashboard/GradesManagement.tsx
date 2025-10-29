@@ -44,12 +44,18 @@ const GradesManagement: React.FC = () => {
     setError(null);
     try {
       // Fetch all data using the API service
+      console.log("[GradesManagement] Fetching grades, students, courses...");
       const [grades, students, courses] = await Promise.all([
         gradesAPI.getGrades(),
         gradesAPI.getStudents(),
         gradesAPI.getCourses(),
       ]);
-
+      console.log("[GradesManagement] Received:", {
+        gradesCount: grades?.length ?? 0,
+        studentsCount: students?.length ?? 0,
+        coursesCount: courses?.length ?? 0,
+        sampleGrade: grades?.[0],
+      });
       setGrades(grades);
       setStudents(students);
       setCourses(courses);
@@ -64,14 +70,22 @@ const GradesManagement: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    console.log("=== Grade Form Submit ===");
+    console.log("Form data:", form);
+
     if (!form.studentId || !form.courseId || !form.grade) {
+      console.log("Missing required fields");
       toast.error("جميع الحقول مطلوبة");
       return;
     }
 
     const gradeValue = parseFloat(form.grade);
+    console.log("Parsed grade value:", gradeValue);
+
     const validation = gradesAPI.validateGrade(gradeValue);
     if (!validation.isValid) {
+      console.log("Grade validation failed:", validation.message);
       toast.error(validation.message || "الدرجة يجب أن تكون بين 0 و 100");
       return;
     }
@@ -79,11 +93,18 @@ const GradesManagement: React.FC = () => {
     try {
       let result;
       if (editingGrade) {
+        console.log("Updating existing grade:", editingGrade.id);
         result = await gradesAPI.updateGrade(editingGrade.id, {
           grade: gradeValue,
           notes: form.notes,
         });
       } else {
+        console.log("Creating new grade with data:", {
+          studentId: parseInt(form.studentId),
+          courseId: parseInt(form.courseId),
+          grade: gradeValue,
+          notes: form.notes,
+        });
         result = await gradesAPI.createGrade({
           studentId: parseInt(form.studentId),
           courseId: parseInt(form.courseId),
@@ -92,6 +113,8 @@ const GradesManagement: React.FC = () => {
         });
       }
 
+      console.log("API result:", result);
+
       if (result.success) {
         toast.success(result.message);
         setShowForm(false);
@@ -99,10 +122,16 @@ const GradesManagement: React.FC = () => {
         resetForm();
         fetchData();
       } else {
+        console.error("API returned error:", result.message);
         toast.error(result.message);
       }
     } catch (error: any) {
       console.error("Error saving grade:", error);
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast.error("حدث خطأ في حفظ الدرجة - يرجى المحاولة مرة أخرى");
     }
   };
@@ -141,8 +170,10 @@ const GradesManagement: React.FC = () => {
 
   const filteredGrades = grades.filter((grade) => {
     const matchesSearch =
-      grade.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      grade.courseName.toLowerCase().includes(searchTerm.toLowerCase());
+      (grade.studentName || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (grade.courseName || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStudent =
       !selectedStudent || grade.studentId.toString() === selectedStudent;
     const matchesCourse =

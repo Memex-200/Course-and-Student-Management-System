@@ -64,11 +64,33 @@ class PaymentsAPI {
     branchId?: number;
   }): Promise<PaymentRecord[]> {
     try {
+      console.log("Fetching detailed payments with params:", params);
       const response = await axios.get("/payments/detailed-payments", {
         params,
       });
-      if (response.data.success) {
-        return response.data.data || [];
+      console.log("Detailed payments response:", response.data);
+
+      if (response.data.success && response.data.data) {
+        return response.data.data.map((payment: any) => ({
+          id: payment.id,
+          studentName: payment.studentName || payment.StudentName || "-",
+          courseName: payment.courseName || payment.CourseName || "-",
+          amount: payment.amount || payment.Amount || 0,
+          paymentMethod:
+            payment.paymentMethod || payment.PaymentMethod || "Cash",
+          paymentMethodArabic:
+            payment.paymentMethodArabic ||
+            payment.PaymentMethodArabic ||
+            "نقدي",
+          paymentDate:
+            payment.paymentDate ||
+            payment.PaymentDate ||
+            new Date().toISOString(),
+          processedBy: payment.processedBy || payment.ProcessedBy || "-",
+          notes: payment.notes || payment.Notes || "",
+          registrationId: payment.registrationId || payment.RegistrationId || 0,
+          branchName: payment.branchName || payment.BranchName || "-",
+        }));
       }
       return [];
     } catch (error) {
@@ -84,10 +106,33 @@ class PaymentsAPI {
     endDate?: string;
   }): Promise<CourseRegistration[]> {
     try {
+      console.log("Fetching course registrations with params:", params);
       const response = await axios.get("/payments/course-registrations", {
         params,
       });
-      return response.data || [];
+      console.log("Course registrations response:", response.data);
+
+      if (Array.isArray(response.data)) {
+        return response.data.map((reg: any) => ({
+          id: reg.id,
+          student: {
+            id: reg.student?.id || reg.StudentId || 0,
+            fullName:
+              reg.student?.fullName || reg.Student || reg.StudentName || "-",
+          },
+          course: {
+            id: reg.course?.id || reg.CourseId || 0,
+            name: reg.course?.name || reg.Course || reg.CourseName || "-",
+          },
+          totalAmount: reg.totalAmount || reg.TotalAmount || 0,
+          paidAmount: reg.paidAmount || reg.PaidAmount || 0,
+          remainingAmount: reg.remainingAmount || reg.RemainingAmount || 0,
+          paymentStatus: reg.paymentStatus || reg.PaymentStatus || "Unpaid",
+          paymentStatusArabic:
+            reg.paymentStatusArabic || reg.PaymentStatusArabic || "غير مدفوع",
+        }));
+      }
+      return [];
     } catch (error) {
       console.error("Error fetching course registrations:", error);
       return [];
@@ -100,97 +145,125 @@ class PaymentsAPI {
     endDate?: string;
   }): Promise<{ transactions: TransactionRow[]; summary: FinancialSummary }> {
     try {
-      // Try the clean transactions endpoint first
-      const response = await axios.get("/payments/clean-transactions", {
-        params,
-      });
-      console.log("API Response:", response.data); // Debug log
+      // Try the debug endpoint first to see what data is available
+      console.log("Fetching transactions with params:", params);
 
-      if (response.data.success) {
-        const transactions = (response.data.data || []).map(
-          (transaction: any) => ({
-            id: transaction.id,
-            studentName: transaction.studentName || "-",
-            courseName: transaction.courseName || "-",
-            amount: transaction.amount || 0,
-            paymentDate: transaction.paymentDate,
-            branchName: transaction.branchName || "-",
-            transactionType: "income" as const,
-            paymentStatus: "paid",
-            invoiceUrl: `/api/invoices/payment/${transaction.id}`,
-            category: "التدريب",
-            description: transaction.notes || "معاملة مالية",
-            processedBy: transaction.processedBy || "-",
-            paymentMethod: transaction.paymentMethod || "نقدي",
-            paymentType: "رسوم الكورس",
-          })
-        );
+      // Try multiple endpoints in order of preference
+      const endpoints = [
+        "/payments/debug-all-transactions",
+        "/payments/clean-transactions",
+        "/payments/all-transactions",
+      ];
 
-        const summary = {
-          totalIncome: response.data.totalIncome || 0,
-          totalExpenses: 0, // No expenses in clean transactions
-          netBalance: response.data.netBalance || 0,
-        };
+      let response = null;
+      let lastError = null;
 
-        console.log("Processed transactions:", transactions); // Debug log
-        console.log("Summary:", summary); // Debug log
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`Trying endpoint: ${endpoint}`);
+          response = await axios.get(endpoint, { params });
+          console.log(`${endpoint} response:`, response.data);
 
-        return { transactions, summary };
-      }
-      return {
-        transactions: [],
-        summary: { totalIncome: 0, totalExpenses: 0, netBalance: 0 },
-      };
-    } catch (error) {
-      console.error("Error fetching clean transactions:", error);
-      // Fallback to old endpoint if clean fails
-      try {
-        const response = await axios.get("/payments/all-transactions", {
-          params,
-        });
-        console.log("Fallback API Response:", response.data);
-
-        if (response.data.success) {
-          const transactions = (response.data.data || []).map(
-            (transaction: any) => ({
-              id: transaction.id,
-              studentName: transaction.studentName || "-",
-              courseName: transaction.courseName || "-",
-              amount: transaction.amount || 0,
-              paymentDate: transaction.paymentDate,
-              branchName: transaction.branchName || "-",
-              transactionType: transaction.transactionType as
-                | "income"
-                | "expenses",
-              paymentStatus: "paid",
-              invoiceUrl:
-                transaction.transactionType === "income"
-                  ? `/api/invoices/payment/${transaction.id}`
-                  : `/api/invoices/expense/${transaction.id}`,
-              category:
-                transaction.transactionType === "income" ? "التدريب" : "أخرى",
-              description: transaction.notes || "معاملة مالية",
-              processedBy: transaction.processedBy || "-",
-              paymentMethod: transaction.paymentMethod || "نقدي",
-              paymentType:
-                transaction.transactionType === "income"
-                  ? "رسوم الكورس"
-                  : "مصروفات",
-            })
-          );
-
-          const summary = {
-            totalIncome: response.data.totalIncome || 0,
-            totalExpenses: response.data.totalExpenses || 0,
-            netBalance: response.data.netBalance || 0,
-          };
-
-          return { transactions, summary };
+          if (response.data && (response.data.success || response.data.data)) {
+            break;
+          }
+        } catch (error) {
+          console.log(`${endpoint} failed:`, error);
+          lastError = error;
+          continue;
         }
-      } catch (fallbackError) {
-        console.error("Fallback also failed:", fallbackError);
       }
 
+      if (!response || !response.data) {
+        throw lastError || new Error("All endpoints failed");
+      }
+
+      const data = response.data;
+      console.log("Using data from:", response.config.url);
+      console.log("Data structure:", data);
+
+      // Process transactions based on the endpoint used
+      let transactions: TransactionRow[] = [];
+      let summary: FinancialSummary = {
+        totalIncome: 0,
+        totalExpenses: 0,
+        netBalance: 0,
+      };
+
+      if (data.success && data.data) {
+        // Clean transactions or all transactions endpoint
+        transactions = (data.data || []).map((transaction: any) => ({
+          id: transaction.id,
+          studentName:
+            transaction.studentName || transaction.StudentName || "-",
+          courseName: transaction.courseName || transaction.CourseName || "-",
+          amount: transaction.amount || transaction.Amount || 0,
+          paymentDate:
+            transaction.paymentDate ||
+            transaction.PaymentDate ||
+            new Date().toISOString(),
+          branchName: transaction.branchName || transaction.BranchName || "-",
+          transactionType: (transaction.transactionType || "income") as
+            | "income"
+            | "expenses",
+          paymentStatus: transaction.paymentStatus || "paid",
+          invoiceUrl:
+            transaction.invoiceUrl || `/api/invoices/payment/${transaction.id}`,
+          category: transaction.category || "التدريب",
+          description:
+            transaction.description || transaction.notes || "معاملة مالية",
+          processedBy:
+            transaction.processedBy || transaction.ProcessedBy || "-",
+          paymentMethod:
+            transaction.paymentMethod || transaction.PaymentMethod || "نقدي",
+          paymentType:
+            transaction.paymentType || transaction.PaymentType || "رسوم الكورس",
+        }));
+
+        summary = {
+          totalIncome: data.totalIncome || 0,
+          totalExpenses: data.totalExpenses || 0,
+          netBalance: data.netBalance || 0,
+        };
+      } else if (Array.isArray(data)) {
+        // Direct array response
+        transactions = data.map((transaction: any) => ({
+          id: transaction.id,
+          studentName:
+            transaction.studentName || transaction.StudentName || "-",
+          courseName: transaction.courseName || transaction.CourseName || "-",
+          amount: transaction.amount || transaction.Amount || 0,
+          paymentDate:
+            transaction.paymentDate ||
+            transaction.PaymentDate ||
+            new Date().toISOString(),
+          branchName: transaction.branchName || transaction.BranchName || "-",
+          transactionType: "income" as const,
+          paymentStatus: "paid",
+          invoiceUrl: `/api/invoices/payment/${transaction.id}`,
+          category: "التدريب",
+          description:
+            transaction.description || transaction.notes || "معاملة مالية",
+          processedBy:
+            transaction.processedBy || transaction.ProcessedBy || "-",
+          paymentMethod:
+            transaction.paymentMethod || transaction.PaymentMethod || "نقدي",
+          paymentType: "رسوم الكورس",
+        }));
+
+        summary = {
+          totalIncome: transactions.reduce((sum, t) => sum + t.amount, 0),
+          totalExpenses: 0,
+          netBalance: transactions.reduce((sum, t) => sum + t.amount, 0),
+        };
+      }
+
+      console.log("Processed transactions:", transactions.length);
+      console.log("Summary:", summary);
+
+      return { transactions, summary };
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
       return {
         transactions: [],
         summary: { totalIncome: 0, totalExpenses: 0, netBalance: 0 },
@@ -287,8 +360,13 @@ class PaymentsAPI {
     paymentData: PaymentData
   ): Promise<{ success: boolean; message: string }> {
     try {
+      console.log(
+        "Processing payment for registration:",
+        registrationId,
+        paymentData
+      );
       const response = await axios.post(
-        `/payments/course-registrations/${registrationId}/payments`,
+        `/payments/course-registrations/${registrationId}/payment`,
         {
           amount: parseFloat(paymentData.amount),
           paymentMethod: paymentData.paymentMethod,
@@ -296,11 +374,13 @@ class PaymentsAPI {
         }
       );
 
+      console.log("Payment processing response:", response.data);
       return {
         success: true,
         message: response.data.message || "تم معالجة الدفعة بنجاح",
       };
     } catch (error: any) {
+      console.error("Payment processing error:", error);
       return {
         success: false,
         message: error.response?.data?.message || "خطأ في معالجة الدفعة",

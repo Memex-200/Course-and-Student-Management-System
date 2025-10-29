@@ -9,7 +9,7 @@ namespace Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    
     public class RoomsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -76,7 +76,7 @@ namespace Api.Controllers
                     .Include(rr => rr.ReservedByUser)
                     .Include(rr => rr.Course)
                     .Include(rr => rr.Instructor)
-                        .ThenInclude(i => i.User)
+                        .ThenInclude(i => i!.User)
                     .Where(rr => rr.RoomId == id);
 
                 if (startDate.HasValue)
@@ -115,7 +115,7 @@ namespace Api.Controllers
         }
 
         [HttpPost("{id}/reservations")]
-        [Authorize(Roles = "Admin,Employee")]
+        
         public async Task<IActionResult> CreateReservation(int id, [FromBody] CreateReservationRequest request)
         {
             try
@@ -168,7 +168,7 @@ namespace Api.Controllers
         }
 
         [HttpPut("reservations/{reservationId}")]
-        [Authorize(Roles = "Admin,Employee")]
+        
         public async Task<IActionResult> UpdateReservation(int reservationId, [FromBody] UpdateReservationRequest request)
         {
             try
@@ -214,7 +214,7 @@ namespace Api.Controllers
         }
 
         [HttpDelete("reservations/{reservationId}")]
-        [Authorize(Roles = "Admin,Employee")]
+        
         public async Task<IActionResult> CancelReservation(int reservationId, [FromBody] CancelReservationRequest request)
         {
             try

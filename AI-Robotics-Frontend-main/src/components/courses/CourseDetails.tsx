@@ -55,6 +55,14 @@ const CourseDetails: React.FC = () => {
       if (response.data.success) {
         console.log("Course data:", response.data.data);
         console.log("Enrolled students:", response.data.data.enrolledStudents);
+        console.log(
+          "Enrolled students count:",
+          response.data.data.enrolledStudents?.length || 0
+        );
+        console.log(
+          "Course registrations:",
+          response.data.data.courseRegistrations
+        );
         setCourse(response.data.data);
       } else {
         toast.error(response.data.message || "خطأ في تحميل بيانات الدورة");
@@ -551,142 +559,149 @@ const CourseDetails: React.FC = () => {
           </button>
         </div>
 
-        {course.enrolledStudents && course.enrolledStudents.length > 0 ? (
+        {(() => {
+          const students =
+            course.enrolledStudents || course.EnrolledStudents || [];
+          console.log("Students to display:", students);
+          return students.length > 0;
+        })() ? (
           <div className="divide-y">
-            {course.enrolledStudents.map((student: any, index: number) => (
-              <div
-                key={`student-${student.id || student.Id || index}-${
-                  student.registrationId || student.RegistrationId || index
-                }`}
-                className="py-4 flex items-center justify-between"
-              >
-                <div>
-                  <h3 className="font-medium text-gray-900">
-                    {student.FullName || student.fullName || "غير محدد"}
-                  </h3>
-                  <p className="text-gray-600">
-                    {student.Phone || student.phone || "غير محدد"}
-                  </p>
-                  <p className="text-sm text-blue-600">
-                    {student.PaymentMethodArabic ||
-                      student.paymentMethodArabic ||
-                      "نقدي"}{" "}
-                    -
-                    <span className="mr-1">
-                      {student.PaidAmount || student.paidAmount || 0} جنيه
-                    </span>
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {/* زر عرض بيانات الطالب */}
-                  <button
-                    onClick={() => openStudentDetailsModal(student)}
-                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200 border border-gray-200"
-                    title="عرض بيانات الطالب"
-                  >
-                    <Eye className="w-5 h-5" />
-                  </button>
-
-                  {/* زر تعديل الدفع */}
-                  <button
-                    onClick={() => {
-                      console.log("Full student object:", student);
-                      console.log(
-                        "RegistrationId:",
-                        student.RegistrationId || student.registrationId
-                      );
-                      console.log(
-                        "FullName:",
-                        student.FullName || student.fullName
-                      );
-                      console.log("All student keys:", Object.keys(student));
-                      console.log("Student values:", Object.values(student));
-                      openPaymentModal(
-                        student.RegistrationId || student.registrationId,
-                        student.PaidAmount || student.paidAmount || 0
-                      );
-                    }}
-                    className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-200 border border-blue-200"
-                    title="تعديل الدفع"
-                  >
-                    <PaymentIcon className="w-5 h-5" />
-                  </button>
-
-                  {/* زر إنشاء حساب الطالب - يظهر فقط للطلاب المدفوعين */}
-                  {(student.PaidAmount || 0) > 0 && (
+            {(course.enrolledStudents || course.EnrolledStudents || []).map(
+              (student: any, index: number) => (
+                <div
+                  key={`student-${student.id || student.Id || index}-${
+                    student.registrationId || student.RegistrationId || index
+                  }`}
+                  className="py-4 flex items-center justify-between"
+                >
+                  <div>
+                    <h3 className="font-medium text-gray-900">
+                      {student.FullName || student.fullName || "غير محدد"}
+                    </h3>
+                    <p className="text-gray-600">
+                      {student.Phone || student.phone || "غير محدد"}
+                    </p>
+                    <p className="text-sm text-blue-600">
+                      {student.PaymentMethodArabic ||
+                        student.paymentMethodArabic ||
+                        "نقدي"}{" "}
+                      -
+                      <span className="mr-1">
+                        {student.PaidAmount || student.paidAmount || 0} جنيه
+                      </span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* زر عرض بيانات الطالب */}
                     <button
-                      onClick={() =>
-                        handleCreateStudentAccount(
-                          student.RegistrationId || student.registrationId
-                        )
-                      }
-                      className="p-2 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-lg transition-all duration-200 border border-purple-200"
-                      title="إنشاء حساب الطالب"
+                      onClick={() => openStudentDetailsModal(student)}
+                      className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200 border border-gray-200"
+                      title="عرض بيانات الطالب"
                     >
-                      <User className="w-5 h-5" />
+                      <Eye className="w-5 h-5" />
                     </button>
-                  )}
 
-                  {/* زر إصدار الشهادة - يظهر للكورسات المكتملة */}
-                  {course?.status === "Completed" &&
-                    (student.PaidAmount || 0) > 0 && (
+                    {/* زر تعديل الدفع */}
+                    <button
+                      onClick={() => {
+                        console.log("Full student object:", student);
+                        console.log(
+                          "RegistrationId:",
+                          student.RegistrationId || student.registrationId
+                        );
+                        console.log(
+                          "FullName:",
+                          student.FullName || student.fullName
+                        );
+                        console.log("All student keys:", Object.keys(student));
+                        console.log("Student values:", Object.values(student));
+                        openPaymentModal(
+                          student.RegistrationId || student.registrationId,
+                          student.PaidAmount || student.paidAmount || 0
+                        );
+                      }}
+                      className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-200 border border-blue-200"
+                      title="تعديل الدفع"
+                    >
+                      <PaymentIcon className="w-5 h-5" />
+                    </button>
+
+                    {/* زر إنشاء حساب الطالب - يظهر فقط للطلاب المدفوعين */}
+                    {(student.PaidAmount || 0) > 0 && (
                       <button
                         onClick={() =>
-                          handleIssueCertificate(
-                            student.RegistrationId || student.registrationId,
-                            student.FullName || student.fullName || "غير محدد"
+                          handleCreateStudentAccount(
+                            student.RegistrationId || student.registrationId
                           )
                         }
-                        className="p-2 text-yellow-600 hover:text-yellow-800 hover:bg-yellow-50 rounded-lg transition-all duration-200 border border-yellow-200"
-                        title="إصدار شهادة"
+                        className="p-2 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-lg transition-all duration-200 border border-purple-200"
+                        title="إنشاء حساب الطالب"
                       >
-                        <GraduationCap className="w-5 h-5" />
+                        <User className="w-5 h-5" />
                       </button>
                     )}
 
-                  {/* زر إكمال */}
-                  <button
-                    onClick={() =>
-                      handleUpdateEnrollmentStatus(
-                        student.RegistrationId || student.registrationId,
-                        "completed"
-                      )
-                    }
-                    className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all duration-200 border border-green-200"
-                    title="إكمال"
-                  >
-                    <CheckCircle className="w-5 h-5" />
-                  </button>
+                    {/* زر إصدار الشهادة - يظهر للكورسات المكتملة */}
+                    {course?.status === "Completed" &&
+                      (student.PaidAmount || 0) > 0 && (
+                        <button
+                          onClick={() =>
+                            handleIssueCertificate(
+                              student.RegistrationId || student.registrationId,
+                              student.FullName || student.fullName || "غير محدد"
+                            )
+                          }
+                          className="p-2 text-yellow-600 hover:text-yellow-800 hover:bg-yellow-50 rounded-lg transition-all duration-200 border border-yellow-200"
+                          title="إصدار شهادة"
+                        >
+                          <GraduationCap className="w-5 h-5" />
+                        </button>
+                      )}
 
-                  {/* زر انسحاب */}
-                  <button
-                    onClick={() =>
-                      handleUpdateEnrollmentStatus(
-                        student.RegistrationId || student.registrationId,
-                        "dropped"
-                      )
-                    }
-                    className="p-2 text-yellow-600 hover:text-yellow-800 hover:bg-yellow-50 rounded-lg transition-all duration-200 border border-yellow-200"
-                    title="انسحاب"
-                  >
-                    <XCircle className="w-5 h-5" />
-                  </button>
+                    {/* زر إكمال */}
+                    <button
+                      onClick={() =>
+                        handleUpdateEnrollmentStatus(
+                          student.RegistrationId || student.registrationId,
+                          "completed"
+                        )
+                      }
+                      className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all duration-200 border border-green-200"
+                      title="إكمال"
+                    >
+                      <CheckCircle className="w-5 h-5" />
+                    </button>
 
-                  {/* زر إلغاء التسجيل */}
-                  <button
-                    onClick={() =>
-                      handleRemoveStudent(
-                        student.RegistrationId || student.registrationId
-                      )
-                    }
-                    className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-200 border border-red-200"
-                    title="إلغاء التسجيل"
-                  >
-                    <UserMinus className="w-5 h-5" />
-                  </button>
+                    {/* زر انسحاب */}
+                    <button
+                      onClick={() =>
+                        handleUpdateEnrollmentStatus(
+                          student.RegistrationId || student.registrationId,
+                          "dropped"
+                        )
+                      }
+                      className="p-2 text-yellow-600 hover:text-yellow-800 hover:bg-yellow-50 rounded-lg transition-all duration-200 border border-yellow-200"
+                      title="انسحاب"
+                    >
+                      <XCircle className="w-5 h-5" />
+                    </button>
+
+                    {/* زر إلغاء التسجيل */}
+                    <button
+                      onClick={() =>
+                        handleRemoveStudent(
+                          student.RegistrationId || student.registrationId
+                        )
+                      }
+                      className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-200 border border-red-200"
+                      title="إلغاء التسجيل"
+                    >
+                      <UserMinus className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
         ) : (
           <div className="text-center py-12">

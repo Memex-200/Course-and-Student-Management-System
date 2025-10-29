@@ -9,7 +9,7 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true, // Enable sending cookies and authorization headers
+  withCredentials: false, // Disable cookies to avoid CORS credential restrictions
 });
 
 // Request interceptor to add auth token
@@ -165,7 +165,12 @@ export const studentsAPI = {
   getBranches: () => api.get("/courses/test-data"),
 
   // Get student's own dashboard (enrolled courses)
-  getMyDashboard: () => api.get("/students/my-dashboard"),
+  getMyDashboard: () => {
+    const sid = JSON.parse(localStorage.getItem("user") || "{}").studentId;
+    return api.get("/students/my-dashboard", {
+      params: sid ? { studentId: sid } : undefined,
+    });
+  },
 };
 
 export const coursesAPI = {

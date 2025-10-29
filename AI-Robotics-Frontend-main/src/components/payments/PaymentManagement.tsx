@@ -43,16 +43,28 @@ const PaymentManagement: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      console.log("=== Starting fetchData ===");
+      
       // Fetch payment records using the API service
+      console.log("Fetching detailed payments...");
       const paymentsData = await paymentsAPI.getDetailedPayments();
+      console.log("Detailed payments result:", paymentsData);
       setPayments(paymentsData);
 
       // Fetch unpaid registrations
+      console.log("Fetching course registrations...");
       const registrationsData = await paymentsAPI.getCourseRegistrations();
+      console.log("Course registrations result:", registrationsData);
+      
       const unpaid = registrationsData.filter(
-        (reg: any) => reg.paymentStatus !== "FullyPaid"
+        (reg: any) => reg.paymentStatus !== "FullyPaid" && reg.paymentStatus !== "مدفوع بالكامل"
       );
+      console.log("Unpaid registrations:", unpaid);
       setUnpaidRegistrations(unpaid);
+      
+      console.log("=== fetchData completed ===");
+      console.log("Payments count:", paymentsData.length);
+      console.log("Unpaid registrations count:", unpaid.length);
     } catch (error) {
       console.error("Error fetching data:", error);
       setError("خطأ في تحميل البيانات");
@@ -164,6 +176,28 @@ const PaymentManagement: React.FC = () => {
               >
                 <Download className="w-4 h-4" />
                 تصدير Excel
+              </button>
+              <button
+                onClick={async () => {
+                  console.log("=== PAYMENT DEBUG INFO ===");
+                  console.log("Current payments:", payments);
+                  console.log("Current unpaid registrations:", unpaidRegistrations);
+                  console.log("Loading state:", loading);
+                  console.log("Error state:", error);
+                  console.log("Selected tab:", selectedTab);
+                  
+                  // Test API endpoints directly
+                  try {
+                    const debugResponse = await fetch('/api/payments/debug-simple');
+                    const debugData = await debugResponse.json();
+                    console.log("Debug API response:", debugData);
+                  } catch (err) {
+                    console.error("Debug API error:", err);
+                  }
+                }}
+                className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <span>Debug</span>
               </button>
             </div>
           </div>

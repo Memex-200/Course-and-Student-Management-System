@@ -10,7 +10,7 @@ namespace Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    
     public class EquipmentController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -141,7 +141,7 @@ namespace Api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin,Employee")]
+        
         public async Task<IActionResult> CreateEquipment([FromBody] CreateEquipmentRequest request)
         {
             try
@@ -184,7 +184,7 @@ namespace Api.Controllers
         }
 
         [HttpPost("{id}/reserve")]
-        [Authorize(Roles = "Admin,Employee")]
+        
         public async Task<IActionResult> ReserveEquipment(int id, [FromBody] ReserveEquipmentRequest request)
         {
             try
@@ -235,7 +235,7 @@ namespace Api.Controllers
         }
 
         [HttpPut("reservations/{reservationId}/approve")]
-        [Authorize(Roles = "Admin")]
+        
         public async Task<IActionResult> ApproveReservation(int reservationId)
         {
             try
@@ -270,7 +270,7 @@ namespace Api.Controllers
         }
 
         [HttpPut("reservations/{reservationId}/start")]
-        [Authorize(Roles = "Admin,Employee")]
+        
         public async Task<IActionResult> StartUsingEquipment(int reservationId)
         {
             try
@@ -302,7 +302,7 @@ namespace Api.Controllers
         }
 
         [HttpPut("reservations/{reservationId}/return")]
-        [Authorize(Roles = "Admin,Employee")]
+        
         public async Task<IActionResult> ReturnEquipment(int reservationId, [FromBody] ReturnEquipmentRequest request)
         {
             try

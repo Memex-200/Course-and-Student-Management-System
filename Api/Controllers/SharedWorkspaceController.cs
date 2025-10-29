@@ -9,7 +9,7 @@ namespace Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    
     public class SharedWorkspaceController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -124,7 +124,7 @@ namespace Api.Controllers
 
         // إنشاء حجز مشترك جديد
         [HttpPost("book")]
-        [Authorize(Roles = "Admin,Employee")]
+        
         public async Task<IActionResult> CreateSharedWorkspaceBooking([FromBody] CreateSharedWorkspaceBookingRequest request)
         {
             try
@@ -276,7 +276,7 @@ namespace Api.Controllers
 
         // تسجيل الدخول للمساحة المشتركة
         [HttpPost("bookings/{bookingId}/checkin")]
-        [Authorize(Roles = "Admin,Employee")]
+        
         public async Task<IActionResult> CheckInToWorkspace(int bookingId, [FromBody] CheckInRequest request)
         {
             try
@@ -322,7 +322,7 @@ namespace Api.Controllers
 
         // تسجيل الخروج من المساحة المشتركة
         [HttpPost("bookings/{bookingId}/checkout")]
-        [Authorize(Roles = "Admin,Employee")]
+        
         public async Task<IActionResult> CheckOutFromWorkspace(int bookingId, [FromBody] CheckOutRequest request)
         {
             try

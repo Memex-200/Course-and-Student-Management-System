@@ -34,7 +34,17 @@ const StudentGrades: React.FC = () => {
     try {
       setError(null);
       // أولاً نحصل على بيانات الطالب
-      const studentResponse = await axios.get("/students/my-dashboard");
+      console.log("[StudentGrades] GET /students/my-dashboard");
+      const sidFromLocal =
+        user?.studentId ||
+        JSON.parse(localStorage.getItem("user") || "{}")?.studentId;
+      const studentResponse = await axios.get("/students/my-dashboard", {
+        params: sidFromLocal ? { studentId: sidFromLocal } : undefined,
+      });
+      console.log(
+        "[StudentGrades] my-dashboard response:",
+        studentResponse.data
+      );
       if (studentResponse.data.success && studentResponse.data.data) {
         const studentData = studentResponse.data.data;
         const sid = studentData.studentId ?? studentData.id; // توافق مع DTO
@@ -47,9 +57,15 @@ const StudentGrades: React.FC = () => {
         }
 
         // ثم نحصل على درجات الطالب
+        console.log(`[StudentGrades] GET /studentgrades/student/${sid}`);
         const gradesResponse = await axios.get(`/studentgrades/student/${sid}`);
+        console.log("[StudentGrades] grades response:", gradesResponse.data);
         if (gradesResponse.data.success) {
           setGrades(gradesResponse.data.data);
+          console.log(
+            "[StudentGrades] grades count:",
+            gradesResponse.data.data?.length ?? 0
+          );
         } else {
           setError(gradesResponse.data.message || "فشل في تحميل الدرجات");
         }
@@ -58,7 +74,7 @@ const StudentGrades: React.FC = () => {
       }
     } catch (error: any) {
       console.error(
-        "Grades fetch error",
+        "[StudentGrades] Grades fetch error",
         error.response?.data || error.message
       );
       const errorMessage =
